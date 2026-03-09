@@ -112,7 +112,6 @@ async def _on_text(ws: WebSocket, session: Session, raw: str) -> None:
 _frame_counters: dict[str, int] = {}
 _pipeline_triggered: set[str] = set()  # Chặn trigger pipeline nhiều lần
 
-# time out sau 10s
 IDLE_TIMEOUT_FRAMES = 167  
 
 
@@ -359,6 +358,10 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         logger.info(f"[{session.device_id}] TTS sentence: {text}")
         await safe_send_json({"type": "tts", "state": "sentence_start", "text": text})
 
+    async def on_emotion(emotion: str) -> None:
+        logger.info(f"[{session.device_id}] Emotion: {emotion}")
+        await safe_send_json({"type": "llm", "emotion": emotion})
+
     async def on_tts_audio(opus_frame: bytes) -> None:
         await safe_send_bytes(opus_frame)
 
@@ -398,6 +401,7 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
             on_tts_audio=on_tts_audio,
             on_tts_stop=on_tts_stop,
             on_music_action=on_music_action,
+            on_emotion=on_emotion,
             is_aborted=lambda: session.aborted,
         )
 
@@ -411,6 +415,8 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         logger.error(f"[{session.device_id}] Pipeline error: {e}", exc_info=True)
     finally:
         session.is_speaking = False
+        # Reset emotion to neutral when done speaking
+        await safe_send_json({"type": "llm", "emotion": "neutral"})
 
 
 async def _send_json(ws: WebSocket, session: Session, data: dict) -> None:

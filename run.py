@@ -1,12 +1,3 @@
-"""
-Entry point — chạy server.
-
-Usage:
-    python run.py
-    python run.py --port 9000
-    python run.py --host 0.0.0.0 --port 8000
-"""
-
 import argparse
 import uvicorn
 from app.config import config

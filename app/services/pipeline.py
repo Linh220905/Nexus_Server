@@ -67,6 +67,7 @@ class ConversationPipeline:
         on_tts_audio: Callable[[bytes], Awaitable[None]],
         on_tts_stop: Callable[[], Awaitable[None]],
         on_music_action: Callable[[dict], Awaitable[None]],
+        on_emotion: Callable[[str], Awaitable[None]] | None = None,
         is_aborted: Callable[[], bool],
     ) -> tuple[str, str] | None:
         """Chay toan bo pipeline. Returns (user_text, assistant_response)."""
@@ -141,6 +142,7 @@ class ConversationPipeline:
                 chat_history,
                 on_tts_sentence=on_tts_sentence,
                 on_tts_audio=on_tts_audio,
+                on_emotion=on_emotion,
                 is_aborted=is_aborted,
                 should_stop_generation=lambda: music_mode["active"],
             )
@@ -225,6 +227,7 @@ class ConversationPipeline:
         *,
         on_tts_sentence: Callable[[str], Awaitable[None]],
         on_tts_audio: Callable[[bytes], Awaitable[None]],
+        on_emotion: Callable[[str], Awaitable[None]] | None = None,
         is_aborted: Callable[[], bool],
         should_stop_generation: Callable[[], bool],
     ) -> str:
@@ -241,12 +244,32 @@ class ConversationPipeline:
         async def producer():
             nonlocal full_response, producer_error
             buffer = ""
+            emotion_parsed = False
             try:
                 async for chunk in self._llm.chat_stream(user_text, chat_history):
                     if is_aborted() or should_stop_generation():
                         break
                     full_response += chunk
                     buffer += chunk
+
+                    # Parse emotion tag from start of LLM response: [emotion:xxx]
+                    if not emotion_parsed and "[emotion:" in buffer:
+                        import re
+                        m = re.search(r'\[emotion:(\w+)\]', buffer)
+                        if m:
+                            emotion_name = m.group(1)
+                            emotion_parsed = True
+                            # Remove the tag from buffer so it's not spoken
+                            buffer = buffer[:m.start()] + buffer[m.end():]
+                            full_response = full_response.replace(m.group(0), "", 1)
+                            logger.info(f"Emotion detected: {emotion_name}")
+                            if on_emotion:
+                                await on_emotion(emotion_name)
+                    # If buffer is growing without emotion tag, mark as parsed
+                    if not emotion_parsed and len(buffer) > 60:
+                        emotion_parsed = True
+                        if on_emotion:
+                            await on_emotion("neutral")
 
                     # Tach tat ca cau da hoan chinh
                     while True:
