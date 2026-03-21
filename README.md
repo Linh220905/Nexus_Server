@@ -1,14 +1,16 @@
-# custom_server_xiaozhi  
-### Custom AI Server for XiaoZhi ESP32 Client
 
-> A real-time voice interaction backend designed for XiaoZhi ESP32 devices.  
+# custom_server_nexus  
+### Custom AI Server for Nexus ESP32 Client
+
+> A real-time voice interaction backend designed for Nexus ESP32 devices.  
 > Supports low-latency streaming STT → LLM → TTS pipeline.
 
 ---
 
 ## Overview
 
-`custom_server_xiaozhi` là AI backend server dùng để giao tiếp với client ESP32 (xiaozhi).
+
+`custom_server_nexus` là AI backend server dùng để giao tiếp với client ESP32 (nexus).
 
 Server thực hiện:
 
@@ -23,7 +25,7 @@ Hệ thống được thiết kế tối ưu cho:
 - Low latency (1–2 giây phản hồi)
 - Streaming pipeline
 - Dễ thay thế STT / LLM / TTS provider
-- Tương thích với XiaoZhi firmware
+- Tương thích với Nexus firmware
 
 ---
 
@@ -57,6 +59,6 @@ Hệ thống được thiết kế tối ưu cho:
 ## Quickstart
 
 ```bash
-cd custom_server_xiaozhi
+cd custom_server_nexus
 pip install -r requirements.txt
 python run.py

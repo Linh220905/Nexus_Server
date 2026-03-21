@@ -4,7 +4,7 @@ from app.config import config
 
 
 def main():
-    parser = argparse.ArgumentParser(description="XiaoZhi ESP32 Server")
+    parser = argparse.ArgumentParser(description="Nexus ESP32 Server")
     parser.add_argument("--host", default=config.server.host, help="Bind host")
     parser.add_argument("--port", type=int, default=config.server.port, help="Bind port")
     parser.add_argument("--reload", action="store_true", help="Auto-reload on code change")

@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Robot Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #07090f;
+      --bg2:       #0b0f1a;
+      --bg3:       #10141f;
+      --surface:   rgba(16,20,31,0.9);
+      --border:    rgba(255,255,255,.07);
+      --border-hi: rgba(255,255,255,.14);
+      --accent:    #4f8fff;
+      --accent2:   #7b61ff;
+      --accent-d:  rgba(79,143,255,.12);
+      --accent-g:  rgba(79,143,255,.3);
+      --green:     #2dd98f;
+      --green-d:   rgba(45,217,143,.1);
+      --red:       #ff5370;
+      --red-d:     rgba(255,83,112,.1);
+      --text:      #c8d0e4;
+      --text-2:    #6b7a99;
+      --text-3:    #3d4a66;
+      --r:         12px;
+      --r-sm:      8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at -10% 0%, rgba(79,143,255,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 110% 100%, rgba(123,97,255,.05) 0%, transparent 55%);
+    }
+
+    /* ─── LOGIN ─── */
+    #login-page {
+      position: relative; z-index: 10;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .login-wrap {
+      display: flex; width: 100%; max-width: 860px; min-height: 500px;
+      border-radius: 20px; overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 40px 100px rgba(0,0,0,.6);
+      animation: fadeUp .5s ease;
+    }
+    .login-visual {
+      flex: 1; background: var(--bg3);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 2.5rem; position: relative; overflow: hidden;
+    }
+    .login-visual::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 30%, rgba(79,143,255,.08) 0%, transparent 70%);
+    }
+    .visual-avatar {
+      width: 110px; height: 110px; border-radius: 22px;
+      object-fit: cover; position: relative; z-index: 1;
+      border: 2px solid rgba(79,143,255,.3);
+      box-shadow: 0 0 50px rgba(79,143,255,.18), 0 16px 40px rgba(0,0,0,.4);
+      margin-bottom: 1.75rem;
+      background: var(--accent-d);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.2rem;
+    }
+    .visual-avatar img {
+      width: 100%; height: 100%; object-fit: cover;
+      border-radius: 20px; display: block;
+    }
+    .login-visual h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.55rem; font-weight: 800; color: #fff;
+      text-align: center; margin-bottom: .45rem;
+      position: relative; z-index: 1;
+    }
+    .login-visual p {
+      font-size: .75rem; color: var(--text-2);
+      text-align: center; line-height: 1.65;
+      position: relative; z-index: 1;
+    }
+    .login-badges {
+      display: flex; gap: .45rem; flex-wrap: wrap;
+      justify-content: center; margin-top: 1.75rem;
+      position: relative; z-index: 1;
+    }
+    .badge {
+      font-size: .63rem; padding: .28rem .65rem; border-radius: 99px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--text-2); letter-spacing: .05em;
+    }
+    .login-form-wrap {
+      width: 360px; background: var(--bg2);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 3rem 2.5rem;
+    }
+    .login-form-wrap h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: .3rem;
+    }
+    .login-form-wrap > p { font-size: .74rem; color: var(--text-2); margin-bottom: 2rem; }
+
+    /* ─── FIELDS ─── */
+    .field { margin-bottom: 1.1rem; }
+    .field label {
+      display: block; font-size: .67rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--text-2); margin-bottom: .45rem;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%; background: rgba(0,0,0,.3);
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: .72rem 1rem; color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: .84rem;
+      outline: none; transition: border-color .18s, box-shadow .18s;
+      -webkit-appearance: none;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d);
+    }
+    .field textarea { resize: vertical; min-height: 78px; }
+    .field select option { background: var(--bg3); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .72rem 1.4rem; border: none; border-radius: var(--r-sm);
+      font-family: 'DM Mono', monospace; font-size: .82rem; font-weight: 500;
+      cursor: pointer; transition: all .18s; letter-spacing: .02em;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 4px 20px rgba(79,143,255,.28);
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 28px rgba(79,143,255,.38); }
+    .btn-primary:active { transform: none; }
+    .btn-ghost {
+      background: rgba(255,255,255,.05); color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.09); border-color: var(--border-hi); }
+    .btn-danger { background: var(--red-d); color: var(--red); border: 1px solid rgba(255,83,112,.2); }
+    .btn-danger:hover { background: rgba(255,83,112,.18); }
+    .btn-sm { padding: .42rem .85rem; font-size: .75rem; }
+    .btn-full { width: 100%; }
+
+    /* ─── APP ─── */
+    #app { display: none; position: relative; z-index: 10; min-height: 100vh; }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 232px;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; padding: 1.25rem 0;
+    }
+    .sb-brand {
+      padding: .2rem 1.4rem 1.2rem;
+      border-bottom: 1px solid var(--border); margin-bottom: .5rem;
+      display: flex; align-items: center; gap: .7rem;
+    }
+    .sb-logo-box {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      overflow: hidden; border: 1px solid rgba(79,143,255,.28);
+      box-shadow: 0 0 14px rgba(79,143,255,.18);
+      background: var(--accent-d);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .sb-logo-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sb-brand-text h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: .95rem; font-weight: 800; color: #fff; line-height: 1.2;
+    }
+    .sb-brand-text h1 span { color: var(--accent); }
+    .sb-brand-text p { font-size: .6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .1em; }
+    .nav-item {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .65rem 1.4rem; font-size: .8rem; color: var(--text-2);
+      cursor: pointer; border-left: 2px solid transparent;
+      transition: all .14s; user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-d); }
+    .nav-icon { width: 18px; text-align: center; font-size: .9rem; }
+    .sb-footer {
+      margin-top: auto; padding: 1rem 1.4rem;
+      border-top: 1px solid var(--border);
+    }
+    .user-row { display: flex; align-items: center; gap: .65rem; margin-bottom: .75rem; }
+    .user-av {
+      width: 32px; height: 32px; border-radius: var(--r-sm); flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: grid; place-items: center;
+      font-family: 'Syne', sans-serif; font-size: .8rem; font-weight: 700; color: #fff;
+    }
+    .user-info .name { font-size: .8rem; font-weight: 500; color: #fff; display: flex; align-items: center; gap: .4rem; }
+    .user-info .role { font-size: .6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; }
+    .role-badge {
+      font-size: .55rem; padding: .12rem .42rem; border-radius: 99px;
+      font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      line-height: 1;
+    }
+    .role-badge.admin  { background: var(--red-d); color: var(--red); border: 1px solid rgba(255,83,112,.25); }
+    .role-badge.viewer { background: var(--accent-d); color: var(--accent); border: 1px solid rgba(79,143,255,.25); }
+    .admin-only { /* toggled via JS */ }
+    body.role-viewer .admin-only { display: none !important; }
+    .viewer-only { /* toggled via JS */ }
+    body.role-admin .viewer-only { display: none !important; }
+
+    .main { margin-left: 232px; padding: 2rem 2.5rem 3rem; min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 2rem; padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.35rem; font-weight: 800; color: #fff;
+    }
+    .page-sub { font-size: .73rem; color: var(--text-2); margin-top: .2rem; }
+
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 1.2rem 1.4rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .stat-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0;
+    }
+    .si-blue  { background: var(--accent-d); }
+    .si-green { background: var(--green-d); }
+    .si-gold  { background: rgba(245,166,35,.1); }
+    .stat-label { font-size: .66rem; letter-spacing: .09em; text-transform: uppercase; color: var(--text-2); margin-bottom: .18rem; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; color: #fff; }
+
+    /* Robots grid */
+    .section-bar {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;
+    }
+    .section-title { font-family: 'Syne', sans-serif; font-size: .9rem; font-weight: 700; color: var(--text); }
+    .count-pill {
+      font-size: .67rem; color: var(--text-2);
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      padding: .2rem .6rem; border-radius: 99px;
+    }
+    .robots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(285px, 1fr)); gap: 1rem; }
+
+    .robot-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      animation: fadeUp .35s ease both;
+    }
+    .robot-card:hover {
+      border-color: var(--border-hi); transform: translateY(-3px);
+      box-shadow: 0 14px 44px rgba(0,0,0,.35);
+    }
+    .card-cover {
+      height: 108px;
+      background: linear-gradient(135deg, var(--bg2), #0e1525);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .card-cover::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 80% at 50% 60%, rgba(79,143,255,.07) 0%, transparent 70%);
+    }
+    .card-avatar {
+      width: 62px; height: 62px; border-radius: 14px; position: relative; z-index: 1;
+      border: 2px solid rgba(79,143,255,.22);
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      background: var(--accent-d);
+      display: flex; align-items: center; justify-content: center; font-size: 1.9rem;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .card-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card-status { position: absolute; top: .7rem; right: .7rem; z-index: 2; }
+    .status-chip {
+      display: inline-flex; align-items: center; gap: .32rem;
+      padding: .2rem .58rem; border-radius: 99px;
+      font-size: .63rem; font-weight: 500; letter-spacing: .05em;
+    }
+    .status-online  { background: var(--green-d); color: var(--green); }
+    .status-offline { background: rgba(255,255,255,.05); color: var(--text-2); }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .status-online .status-dot { animation: pulse 2s ease infinite; box-shadow: 0 0 5px currentColor; }
+
+    .card-body { padding: 1.1rem 1.15rem; }
+    .card-name { font-family: 'Syne', sans-serif; font-size: .98rem; font-weight: 700; color: #fff; margin-bottom: .12rem; }
+    .card-mac { font-size: .67rem; color: var(--text-3); letter-spacing: .06em; margin-bottom: .75rem; }
+    .card-desc {
+      font-size: .74rem; color: var(--text-2); line-height: 1.65; margin-bottom: .9rem;
+      min-height: 2.3em;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-tags { display: flex; gap: .38rem; flex-wrap: wrap; margin-bottom: .9rem; }
+    .tag {
+      font-size: .65rem; color: var(--text-2);
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      padding: .2rem .52rem; border-radius: 5px;
+    }
+    .card-actions {
+      display: flex; gap: .5rem;
+      padding-top: .85rem; border-top: 1px solid var(--border);
+    }
+
+    /* Form */
+    .form-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 2rem 2rem 2.5rem; max-width: 680px;
+    }
+    .form-section {
+      background: rgba(0,0,0,.2); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 1.2rem; margin: 1.4rem 0;
+    }
+    .form-section-title {
+      font-family: 'Syne', sans-serif; font-size: .7rem; font-weight: 700;
+      color: var(--accent); letter-spacing: .12em; text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,.72); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    .modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
+    .modal-box {
+      width: 100%; max-width: 540px;
+      background: var(--bg2); border: 1px solid var(--border-hi);
+      border-radius: 16px; padding: 1.75rem;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6);
+      animation: fadeUp .22s ease;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;
+    }
+    .modal-header h2 { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .close-btn {
+      width: 30px; height: 30px; border-radius: var(--r-sm);
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--text-2); cursor: pointer;
+      display: grid; place-items: center; font-size: 1rem; transition: all .15s;
+    }
+    .close-btn:hover { color: #fff; background: rgba(255,255,255,.1); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 1.75rem; right: 1.75rem; z-index: 999;
+      background: var(--bg2); border: 1px solid var(--border-hi);
+      border-radius: var(--r); padding: .85rem 1.25rem;
+      font-size: .79rem; box-shadow: 0 8px 32px rgba(0,0,0,.5);
+      display: flex; align-items: center; gap: .6rem;
+      opacity: 0; transform: translateY(8px);
+      transition: all .25s ease; pointer-events: none; max-width: 280px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(45,217,143,.28); }
+    .toast.error   { border-color: rgba(255,83,112,.28); }
+
+    .spinner {
+      width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.15);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .65s linear infinite; display: inline-block;
+    }
+    .empty-state {
+      text-align: center; padding: 4rem 2rem;
+      border: 1px dashed var(--border); border-radius: var(--r);
+    }
+    .empty-state .ei { font-size: 2.5rem; margin-bottom: 1rem; opacity: .3; }
+    .empty-state h3 { font-family: 'Syne', sans-serif; font-size: .88rem; color: var(--text-2); margin-bottom: .4rem; }
+    .empty-state p { font-size: .73rem; color: var(--text-3); }
+
+    .tab-view { display: none; }
+    .tab-view.active { display: block; animation: fadeUp .3s ease; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    @keyframes pulse  { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 3px; }
+
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 1.5rem; }
+      .login-visual { display: none; }
+      .login-wrap { max-width: 400px; }
+      .login-form-wrap { width: 100%; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════ LOGIN ════ -->
+<div id="login-page">
+  <div class="login-wrap">
+    <div class="login-visual">
+      <div class="visual-avatar" id="login-avatar">
+        <img src="" id="login-avatar-img" alt="Robot" onerror="this.style.display='none'" />
+        <span id="login-avatar-emoji" style="display:none;">🤖</span>
+      </div>
+      <h2>Nexus</h2>
+      <p>Intelligent Robot Fleet<br>Management Platform</p>
+      <div class="login-badges">
+        <span class="badge">Multi-language</span>
+        <span class="badge">Voice Styles</span>
+        <span class="badge">Real-time</span>
+      </div>
+    </div>
+    <div class="login-form-wrap">
+      <h3>Welcome back</h3>
+      <p>Sign in to manage your robot fleet</p>
+      <form onsubmit="handleLogin(event)">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="Enter username" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Enter password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn" style="margin-top:.75rem">Sign In</button>
+      </form>
+      <div style="margin: 1.5rem 0 0 0; text-align:center;">
+        <span style="color:var(--text-2); font-size:.8rem;">or</span>
+      </div>
+      <button onclick="window.location.href='/auth/google-login'" class="btn btn-ghost btn-full" style="margin-top:1rem; display:flex; align-items:center; justify-content:center; gap:.6rem;">
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width:20px; height:20px; vertical-align:middle;"> Sign in with Google
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div id="app">
+  <nav class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo-box" id="sb-logo-box">
+        <img src="" id="sb-logo-img" alt="" onerror="this.style.display='none'; document.getElementById('sb-logo-emoji').style.display='block'" />
+        <span id="sb-logo-emoji" style="display:none; font-size:1.1rem;">🤖</span>
+      </div>
+      <div class="sb-brand-text">
+        <h1>Nexus</h1>
+        <p>Robot Platform</p>
+      </div>
+    </div>
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard',this)">
+      <span class="nav-icon">⊞</span> Dashboard
+    </div>
+    <div class="nav-item admin-only" data-tab="add-robot" onclick="switchTab('add-robot',this)">
+      <span class="nav-icon">＋</span> Add Robot
+    </div>
+    <div class="nav-item viewer-only" data-tab="claim-robot" onclick="switchTab('claim-robot',this)">
+      <span class="nav-icon">🔑</span> Claim Robot
+    </div>
+    <div class="sb-footer">
+      <div class="user-row">
+        <div class="user-av" id="user-av-initial">A</div>
+        <div class="user-info">
+          <div class="name" id="sb-username">admin</div>
+          <div class="role">Administrator</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-full btn-sm" onclick="handleLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Dashboard -->
+    <div class="tab-view active" id="tab-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Overview of your robot fleet</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('add-robot', document.querySelector('[data-tab=add-robot]'))">+ Add Robot</button>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon si-blue">🤖</div>
+          <div><div class="stat-label">Total Units</div><div class="stat-value" id="stat-total">0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-green">⚡</div>
+          <div><div class="stat-label">Online</div><div class="stat-value" id="stat-online">0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-gold">🌐</div>
+          <div><div class="stat-label">Languages</div><div class="stat-value" id="stat-langs">0</div></div>
+        </div>
+      </div>
+      <div class="section-bar">
+        <span class="section-title">Registered Robots</span>
+        <span class="count-pill" id="robot-count-badge">0 units</span>
+      </div>
+      <div id="robots-grid" class="robots-grid"></div>
+    </div>
+
+    <!-- Add Robot -->
+    <div class="tab-view" id="tab-add-robot">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Add Robot</div>
+          <div class="page-sub">Register a new unit to your fleet</div>
+        </div>
+      </div>
+      <div class="form-card">
+        <form id="robot-form" onsubmit="handleCreateRobot(event)">
+          <div class="form-row">
+            <div class="field">
+              <label>Robot Name</label>
+              <input type="text" id="robot-name" placeholder="e.g. Alpha-001" required />
+            </div>
+            <div class="field">
+              <label>MAC Address</label>
+              <input type="text" id="robot-mac" placeholder="AA:BB:CC:DD:EE:FF" required />
+            </div>
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea id="robot-description" rows="2" placeholder="Brief description of this unit..."></textarea>
+          </div>
+          <div class="form-section">
+            <div class="form-section-title">Configuration</div>
+            <div class="field">
+              <label>System Prompt</label>
+              <textarea id="robot-system-prompt" rows="4" placeholder="You are a helpful assistant robot..."></textarea>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Voice Style</label>
+                <select id="robot-voice-style">
+                  <option value="default">Default</option>
+                  <option value="happy">Happy</option>
+                  <option value="sad">Sad</option>
+                  <option value="angry">Angry</option>
+                  <option value="calm">Calm</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Language</label>
+                <select id="robot-language">
+                  <option value="vi">Vietnamese</option>
+                  <option value="en">English</option>
+                  <option value="ja">Japanese</option>
+                  <option value="zh">Chinese</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="create-btn">Create Robot</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Claim Robot (viewer only) -->
+    <div class="tab-view" id="tab-claim-robot">
+      <div class="topbar">
+        <div>
+          <div class="page-title">🔑 Claim Robot</div>
+          <div class="page-sub">Nhập mã OTP 6 số (được admin cấp) để thêm robot vào tài khoản của bạn</div>
+        </div>
+      </div>
+      <div class="form-card" style="max-width:440px">
+        <form id="claim-form" onsubmit="handleClaimRobot(event)">
+          <div class="field">
+            <label>OTP Code (6 digits)</label>
+            <input type="text" id="claim-otp" placeholder="123456" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+              style="font-size:1.6rem; letter-spacing:.5em; text-align:center; font-family:'Syne',sans-serif; font-weight:700;" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="claim-btn" style="margin-top:.5rem">🔑 Claim Robot</button>
+        </form>
+        <div id="claim-result" style="margin-top:1.2rem; display:none;"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ════ EDIT MODAL ════ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title">Edit Robot</h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <form id="edit-form" onsubmit="handleUpdateRobot(event)">
+      <input type="hidden" id="edit-id" />
+      <div class="field">
+        <label>Robot Name</label>
+        <input type="text" id="edit-name" required />
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="edit-description" rows="2"></textarea>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Configuration</div>
+        <div class="field">
+          <label>System Prompt</label>
+          <textarea id="edit-system-prompt" rows="4"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Voice Style</label>
+            <select id="edit-voice-style">
+              <option value="default">Default</option>
+              <option value="happy">Happy</option>
+              <option value="sad">Sad</option>
+              <option value="angry">Angry</option>
+              <option value="calm">Calm</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Language</label>
+            <select id="edit-language">
+              <option value="vi">Vietnamese</option>
+              <option value="en">English</option>
+              <option value="ja">Japanese</option>
+              <option value="zh">Chinese</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; gap:.6rem;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toast-icon"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  // ════════════════════════════════════════
+  // ★ THAY URL ẢNH ROBOT CỦA BẠN TẠI ĐÂY ★
+  const ROBOT_IMAGE_URL = '/static/asset/Nexusbot.png';
+  const API_ROBOTS = '/api/robots/';
+  // ════════════════════════════════════════
+
+  let robots = [];
+  let currentUser = null;
+  let currentRole = null;
+
+  // ── Helpers ──
+  function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function toast(icon, msg, type) {
+    const el = document.getElementById('toast');
+    document.getElementById('toast-icon').textContent = icon;
+    document.getElementById('toast-msg').textContent = msg;
+    el.className = 'toast show' + (type ? ' '+type : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+  }
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (sec < 60) return 'vừa xong';
+    if (sec < 3600) return Math.floor(sec/60) + ' phút trước';
+    if (sec < 86400) return Math.floor(sec/3600) + ' giờ trước';
+    return Math.floor(sec/86400) + ' ngày trước';
+  }
+
+  // Wrapper for fetch that handles 403 automatically
+  async function apiFetch(url, options) {
+    const res = await fetch(url, { credentials: 'include', ...options });
+    if (res.status === 401) {
+      // Session expired → reload
+      window.location.reload();
+      throw new Error('Unauthorized');
+    }
+    if (res.status === 403) {
+      toast('⛔', 'Bạn không có quyền thực hiện thao tác này', 'error');
+      throw new Error('Forbidden');
+    }
+    return res;
+  }
+
+  // ── Load robots from API ──
+  async function loadRobots() {
+    try {
+      const res = await apiFetch(API_ROBOTS);
+      if (res.ok) {
+        robots = await res.json();
+      } else {
+        robots = [];
+      }
+    } catch (e) {
+      robots = [];
+    }
+    renderDashboard();
+  }
+
+  function applyRole(role) {
+    currentRole = role;
+    document.body.classList.remove('role-admin', 'role-viewer');
+    document.body.classList.add('role-' + role);
+
+    const nameEl = document.getElementById('sb-username');
+    const roleEl = nameEl.closest('.user-info').querySelector('.role');
+    if (role === 'admin') {
+      roleEl.textContent = 'Administrator';
+      const existingBadge = nameEl.querySelector('.role-badge');
+      if (existingBadge) existingBadge.remove();
+      nameEl.insertAdjacentHTML('beforeend', '<span class="role-badge admin">Admin</span>');
+    } else {
+      roleEl.textContent = 'Viewer';
+      const existingBadge = nameEl.querySelector('.role-badge');
+      if (existingBadge) existingBadge.remove();
+      nameEl.insertAdjacentHTML('beforeend', '<span class="role-badge viewer">Viewer</span>');
+    }
+
+    const addBtnTopbar = document.querySelector('#tab-dashboard .topbar .btn-primary');
+    if (addBtnTopbar) addBtnTopbar.style.display = (role === 'admin') ? '' : 'none';
+  }
+
+  function applyImages() {
+    const loginImg = document.getElementById('login-avatar-img');
+    loginImg.src = ROBOT_IMAGE_URL;
+    loginImg.onload = function() { document.getElementById('login-avatar-emoji').style.display = 'none'; };
+    loginImg.onerror = function() { this.style.display='none'; document.getElementById('login-avatar-emoji').style.display=''; };
+
+    const sbImg = document.getElementById('sb-logo-img');
+    sbImg.src = ROBOT_IMAGE_URL;
+    sbImg.onerror = function() { this.style.display='none'; document.getElementById('sb-logo-emoji').style.display=''; };
+  }
+  applyImages();
+
+  function showApp(email, role) {
+    currentUser = email;
+    document.getElementById('sb-username').textContent = email;
+    document.getElementById('user-av-initial').textContent = email[0].toUpperCase();
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    applyRole(role);
+    loadRobots();  // fetch from API
+  }
+
+  // ── Check session via /auth/me ──
+  (async function checkSession() {
+    try {
+      const res = await fetch('/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        showApp(data.email, data.role || 'viewer');
+      }
+    } catch (e) { /* stay on login */ }
+  })();
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const u = document.getElementById('username').value;
+    const p = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p }),
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast('✕', err.detail || 'Login failed', 'error');
+        btn.innerHTML = 'Sign In'; btn.disabled = false;
+        return;
+      }
+      const meRes = await fetch('/auth/me', { credentials: 'include' });
+      if (meRes.ok) {
+        const data = await meRes.json();
+        showApp(data.email, data.role || 'admin');
+      } else {
+        showApp(u, 'admin');
+      }
+    } catch (err) {
+      toast('✕', 'Network error', 'error');
+    }
+    btn.innerHTML = 'Sign In'; btn.disabled = false;
+  }
+
+  async function handleLogout() {
+    currentUser = null;
+    await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.reload();
+  }
+
+  function switchTab(tab, el) {
+    document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (el) el.classList.add('active');
+  }
+
+  // ── Render Dashboard (from API data) ──
+  function renderDashboard() {
+    const grid = document.getElementById('robots-grid');
+    const onlineCount = robots.filter(r => r.is_online).length;
+    document.getElementById('stat-total').textContent = robots.length;
+    document.getElementById('stat-online').textContent = onlineCount;
+    document.getElementById('stat-langs').textContent = robots.length > 0 ? '—' : '0';
+    document.getElementById('robot-count-badge').textContent = robots.length + ' unit' + (robots.length !== 1 ? 's' : '');
+
+    if (!robots.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="ei">🤖</div>
+        <h3>No robots registered yet</h3>
+        <p>Add your first unit to get started.</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = robots.map((r, i) => {
+      const isOnline = r.is_online;
+      const statusClass = isOnline ? 'status-online' : 'status-offline';
+      const statusText = isOnline ? 'Online' : 'Offline';
+      const createdAt = fmtDate(r.created_at);
+      const lastSeen = r.last_seen ? timeAgo(r.last_seen) : 'chưa kết nối';
+      const ownerText = r.owner_username ? esc(r.owner_username) : '<i style="color:var(--text-3)">chưa gán</i>';
+
+      return `
+      <div class="robot-card" style="animation-delay:${i * .06}s">
+        <div class="card-cover">
+          <div class="card-avatar">
+            <img src="${ROBOT_IMAGE_URL}" alt="${esc(r.name || r.robot_id)}"
+              onerror="this.style.display='none'; this.parentNode.querySelector('.ca-emoji').style.display=''" />
+            <span class="ca-emoji" style="display:none; font-size:1.9rem;">🤖</span>
+          </div>
+          <div class="card-status">
+            <span class="status-chip ${statusClass}">
+              <span class="status-dot"></span>${statusText}
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">${esc(r.name || r.robot_id)}</div>
+          <div class="card-mac">${esc(r.mac_address)}</div>
+          <div class="card-desc" style="min-height:auto;">
+            <div style="display:grid; grid-template-columns:auto 1fr; gap:.2rem .6rem; font-size:.72rem;">
+              <span style="color:var(--text-3)">ID:</span><span>${esc(r.robot_id)}</span>
+              <span style="color:var(--text-3)">Đăng ký:</span><span>📅 ${createdAt}</span>
+              <span style="color:var(--text-3)">Lần cuối:</span><span>${isOnline ? '🟢 đang online' : '⏱ ' + lastSeen}</span>
+              <span style="color:var(--text-3)">Owner:</span><span>👤 ${ownerText}</span>
+            </div>
+          </div>
+          <div class="card-tags">
+            <span class="tag">${isOnline ? '🟢 Online' : '🔴 Offline'}</span>
+            <span class="tag">📅 ${createdAt}</span>
+          </div>
+          <div class="card-actions">
+            ${currentRole === 'admin' ? `
+              <button class="btn btn-ghost btn-sm" onclick="openEdit(${i})" style="flex:1">✏️ Edit</button>
+              <button class="btn btn-ghost btn-sm admin-only" onclick="generateOTP('${esc(r.mac_address)}')" title="Tạo OTP">🔑</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteRobot(${i})">🗑</button>
+            ` : `
+              <button class="btn btn-ghost btn-sm" onclick="openEdit(${i})" style="flex:1">✏️ Edit</button>
+            `}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Create Robot (API) ──
+  async function handleCreateRobot(e) {
+    e.preventDefault();
+    const btn = document.getElementById('create-btn');
+    btn.innerHTML = '<span class="spinner"></span> Creating...';
+    btn.disabled = true;
+    const name = document.getElementById('robot-name').value.trim();
+    const mac = document.getElementById('robot-mac').value.trim();
+    // Generate a robot_id from mac
+    const robotId = 'robot-' + mac.replace(/:/g,'').toLowerCase();
+    try {
+      const res = await apiFetch(API_ROBOTS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mac_address: mac,
+          robot_id: robotId,
+          name: name || null,
+        }),
+      });
+      if (res.ok) {
+        toast('✓', 'Robot created successfully.', 'success');
+        document.getElementById('robot-form').reset();
+        switchTab('dashboard', document.querySelector('[data-tab=dashboard]'));
+        await loadRobots();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast('✕', err.detail || 'Failed to create robot', 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error');
+    }
+    btn.innerHTML = 'Create Robot'; btn.disabled = false;
+  }
+
+  // ── Edit Robot ──
+  function openEdit(i) {
+    const r = robots[i];
+    document.getElementById('edit-id').value = r.mac_address;
+    document.getElementById('edit-name').value = r.name || '';
+    document.getElementById('edit-description').value = '';
+    document.getElementById('edit-system-prompt').value = '';
+    document.getElementById('edit-voice-style').value = 'default';
+    document.getElementById('edit-language').value = 'vi';
+    document.getElementById('modal-title').textContent = 'Edit — ' + (r.name || r.robot_id);
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('edit-modal').classList.remove('open'); }
+  document.getElementById('edit-modal').addEventListener('click', e => { if (e.target.id === 'edit-modal') closeModal(); });
+
+  async function handleUpdateRobot(e) {
+    e.preventDefault();
+    const mac = document.getElementById('edit-id').value;
+    const name = document.getElementById('edit-name').value.trim();
+    try {
+      const res = await apiFetch(API_ROBOTS + encodeURIComponent(mac), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name || null }),
+      });
+      if (res.ok) {
+        toast('✓', 'Changes saved.', 'success');
+        closeModal();
+        await loadRobots();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast('✕', err.detail || 'Update failed', 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error');
+    }
+  }
+
+  // ── Delete Robot (API) ──
+  async function deleteRobot(i) {
+    const r = robots[i];
+    if (!confirm('Remove "' + (r.name || r.robot_id) + '" from fleet?')) return;
+    try {
+      const res = await apiFetch(API_ROBOTS + encodeURIComponent(r.mac_address), {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast('✕', 'Robot removed.', '');
+        await loadRobots();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast('✕', err.detail || 'Delete failed', 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error');
+    }
+  }
+
+  // ── Generate OTP (admin) ──
+  async function generateOTP(mac) {
+    try {
+      const res = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/otp', {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        prompt('OTP cho robot ' + mac + ' (hết hạn 10 phút):', data.otp);
+        toast('🔑', 'OTP: ' + data.otp, 'success');
+      } else {
+        toast('✕', 'Failed to generate OTP', 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error');
+    }
+  }
+
+  // ── Claim Robot (viewer) ──
+  async function handleClaimRobot(e) {
+    e.preventDefault();
+    const btn = document.getElementById('claim-btn');
+    const resultDiv = document.getElementById('claim-result');
+    btn.innerHTML = '<span class="spinner"></span> Claiming...';
+    btn.disabled = true;
+    resultDiv.style.display = 'none';
+    try {
+      const res = await apiFetch('/api/robots/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          otp: document.getElementById('claim-otp').value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast('✓', data.message || 'Claim thành công!', 'success');
+        resultDiv.innerHTML = '<div style="color:var(--green); font-size:.85rem;">✅ ' + esc(data.message) + '</div>';
+        resultDiv.style.display = 'block';
+        document.getElementById('claim-form').reset();
+        await loadRobots();
+      } else {
+        const errMsg = data.detail || data.message || 'Claim thất bại';
+        toast('✕', errMsg, 'error');
+        resultDiv.innerHTML = '<div style="color:var(--red); font-size:.85rem;">❌ ' + esc(errMsg) + '</div>';
+        resultDiv.style.display = 'block';
+      }
+    } catch (err) {
+      if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error');
+    }
+    btn.innerHTML = '🔑 Claim Robot';
+    btn.disabled = false;
+  }
+
+  // Auto-refresh every 30 seconds
+  setInterval(() => {
+    if (currentUser) loadRobots();
+  }, 30000);
+</script>
+</body>
+</html>

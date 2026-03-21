@@ -17,11 +17,50 @@ from app.config import config
 from app.mcp import MCPToolRegistry
 from app.models import ServerHello, AudioParams
 from app.websocket.session import Session, create_session, remove_session
+from app.robots.crud import get_robot_config, get_robot_by_mac, create_robot, update_robot_status, generate_otp
+from app.robots.models import RobotCreate
 
 logger = logging.getLogger(__name__)
 mcp_tools = MCPToolRegistry()
 _session_ws: dict[str, WebSocket] = {}
 _session_send_locks: dict[str, asyncio.Lock] = {}
+
+
+def _normalize_robot_id(device_id: str, client_id: str) -> str:
+    if client_id and client_id != "unknown":
+        return client_id
+    compact_mac = (device_id or "unknown").replace(":", "").replace("-", "")
+    return f"dev-{compact_mac}"
+
+
+def _ensure_robot_registered(device_id: str, client_id: str) -> None:
+    """Auto-create robot record when device connects via WebSocket."""
+    if not device_id or device_id == "unknown":
+        return
+
+    existed = get_robot_by_mac(device_id)
+
+    if existed is None:
+        # New robot → auto-register + generate OTP
+        try:
+            robot = RobotCreate(
+                mac_address=device_id,
+                robot_id=_normalize_robot_id(device_id, client_id),
+                name=f"Nexus-{device_id[-5:].replace(':', '')}",
+            )
+            create_robot(robot)
+            logger.info("[%s] Auto-registered robot record", device_id)
+            otp = generate_otp(device_id)
+            logger.info("[%s] OTP generated: %s", device_id, otp)
+        except Exception as e:
+            logger.warning("[%s] Auto-register robot failed: %s", device_id, e)
+    elif not existed.owner_username:
+        # Existing robot without owner → refresh OTP
+        try:
+            otp = generate_otp(device_id)
+            logger.info("[%s] OTP refreshed: %s", device_id, otp)
+        except Exception as e:
+            logger.warning("[%s] OTP refresh failed: %s", device_id, e)
 
 
 async def handle_client(ws: WebSocket) -> None:
@@ -36,6 +75,14 @@ async def handle_client(ws: WebSocket) -> None:
     # Register websocket for this session so background tasks can push to it
     _session_ws[session.session_id] = ws
     _session_send_locks[session.session_id] = asyncio.Lock()
+
+    # Auto register robot from ESP32 identity headers (Device-Id/Client-Id)
+    _ensure_robot_registered(device_id, client_id)
+    try:
+        update_robot_status(device_id, True)
+    except Exception as e:
+        logger.warning("[%s] Failed to set robot online status: %s", device_id, e)
+    
     logger.info(f"[{device_id}] Connected (protocol v{proto_version})")
 
     try:
@@ -76,6 +123,11 @@ async def handle_client(ws: WebSocket) -> None:
             logger.info(f"[{device_id}] Disconnected ({frames} frames, pipeline_already={'yes' if already else 'no'})")
 
         _pipeline_triggered.discard(session.session_id)
+
+        try:
+            update_robot_status(device_id, False)
+        except Exception as e:
+            logger.warning("[%s] Failed to set robot offline status: %s", device_id, e)
 
         # Cleanup websocket mapping and session
         try:
@@ -446,6 +498,9 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         session.reset_audio_buffer()
         return
 
+    # Get robot config to customize behavior
+    robot_config = get_robot_config(session.device_id)
+    
     session.is_speaking = True
     ws_open = True
 
@@ -511,10 +566,17 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
             }
         )
 
+    # Use robot-specific system prompt if available
+    chat_history = session.chat_history
+    if robot_config and robot_config.system_prompt:
+        # Create a temporary chat history with the robot's system prompt
+        chat_history = [{"role": "system", "content": robot_config.system_prompt}]
+        chat_history.extend(session.chat_history[1:])  # Add the rest of the history without the original system message
+
     try:
         result = await session.pipeline.process(
             pcm_data,
-            session.chat_history,
+            chat_history,
             on_stt_result=on_stt_result,
             on_tts_start=on_tts_start,
             on_tts_sentence=on_tts_sentence,

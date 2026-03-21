@@ -2,7 +2,10 @@
 __pycache__/
 *.pyc
 *.pyo
-.venv/
-venv/
 models/
-.app/mcp/alarms.json
+app/data/
+app/mcp/alarms.json
+static/asset/
+flow.png
+app/mcp/BaoThuc.mp3
+app/mcp/default_ringtone.wav

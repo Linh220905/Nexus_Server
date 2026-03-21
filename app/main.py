@@ -1,14 +1,20 @@
-"""
-FastAPI application — ghép WebSocket + REST API.
-"""
-
 import logging
 from fastapi import FastAPI, WebSocket
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from pathlib import Path
+import os
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import config
-from app.api.routes import router as api_router
+from app.api.routes import router as api_router, v1_router
+from app.api.ota import router as ota_router
+from app.api.ota_activate import router as ota_activate_router
+from app.api.auth_google import router as auth_google_router
+from app.api.auth import router as auth_local_router
 from app.websocket.handler import handle_client
 from app.mcp.alarm_scheduler import start_scheduler
+from app.database.connection import init_database
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,31 +23,54 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="XiaoZhi ESP32 Server",
+    title="Nexus ESP32 Server",
     version="1.0.0",
-    description="Custom server cho xiaozhi-esp32. WebSocket + REST API.",
+    description="Custom server cho nexus-esp32. WebSocket + REST API.",
+)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "your-very-secret-session-key")
 )
 
 app.include_router(api_router)
+app.include_router(v1_router)
+app.include_router(ota_router)
+app.include_router(ota_activate_router)
+app.include_router(auth_google_router)
+app.include_router(auth_local_router)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/admin/", response_class=HTMLResponse)
+async def admin_panel():
+    admin_html_path = Path("static/admin/index.html")
+    if admin_html_path.exists():
+        with open(admin_html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    else:
+        return HTMLResponse(content="<h1>Admin Panel not found</h1>")
 
 
 @app.websocket("/")
 async def websocket_endpoint(ws: WebSocket):
-    """ESP32 kết nối vào đây."""
     await handle_client(ws)
 
 
 @app.on_event("startup")
 async def on_startup():
     logger.info("=" * 60)
-    # Start alarm scheduler
+    init_database()
     try:
         await start_scheduler()
     except Exception:
         logger.exception("Failed to start alarm scheduler")
-    logger.info("🚀 XiaoZhi Server started")
+    logger.info("🚀 Nexus Server started")
     logger.info(f"   WebSocket : ws://0.0.0.0:{config.server.port}/")
     logger.info(f"   REST API  : http://0.0.0.0:{config.server.port}/api/")
+    logger.info(f"   Admin Panel: http://0.0.0.0:{config.server.port}/admin/")
     logger.info(f"   Docs      : http://0.0.0.0:{config.server.port}/docs")
     providers = [f"{p.name}({p.model})" for p in config.llm.providers]
     intent_providers = [f"{p.name}({p.model})" for p in config.intent_llm.providers]
