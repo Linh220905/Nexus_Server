@@ -5,7 +5,8 @@ __pycache__/
 models/
 app/data/
 app/mcp/alarms.json
-static/asset/
+static/asset/*
+!static/asset/Nexusbot.png
 flow.png
 app/mcp/BaoThuc.mp3
 app/mcp/default_ringtone.wav
