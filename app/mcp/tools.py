@@ -73,6 +73,22 @@ class MCPToolRegistry:
                     "required": ["time"],
                 },
             },
+            {
+                "name": "set_volume",
+                "description": "Điều chỉnh âm lượng (0-100)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "volume": {
+                            "type": "integer",
+                            "description": "Mức âm lượng (0-100)",
+                            "minimum": 0,
+                            "maximum": 100,
+                        },
+                    },
+                    "required": ["volume"],
+                },
+            },
         ]
 
     async def call_tool(self, name: str, arguments: dict[str, Any] | None) -> MCPToolResult:
@@ -83,10 +99,29 @@ class MCPToolRegistry:
             return self._tool_search_vietnamese_music(arguments)
         if name == "set_alarm":
             return self._tool_set_alarm(arguments)
+        if name == "set_volume":
+            return self._tool_set_volume(arguments)
 
         return MCPToolResult(
             ok=False,
             content=[{"type": "text", "text": f"Tool không tồn tại: {name}"}],
+        )
+
+    def _tool_set_volume(self, arguments: dict[str, Any]) -> MCPToolResult:
+        """Điều chỉnh âm lượng: xác thực và trả về mức volume."""
+        try:
+            volume = int(arguments.get("volume", -1))
+        except Exception:
+            return MCPToolResult(ok=False, content=[{"type": "text", "text": "Tham số volume phải là số nguyên."}])
+        if not (0 <= volume <= 100):
+            return MCPToolResult(ok=False, content=[{"type": "text", "text": "Volume phải trong khoảng 0-100."}])
+        # TODO: Gửi lệnh tới ESP32 để thay đổi âm lượng
+        return MCPToolResult(
+            ok=True,
+            content=[
+                {"type": "text", "text": f"Đã đặt âm lượng: {volume}%"},
+                {"type": "json", "json": {"volume": volume}},
+            ],
         )
 
     def _tool_set_alarm(self, arguments: dict[str, Any]) -> MCPToolResult:

@@ -87,8 +87,9 @@ class ConversationPipeline:
             if fast_intent.intent == "music":
                 logger.info("Fast music intent detected: %s", fast_intent.song_name)
                 await on_tts_start()
+                song_name = fast_intent.song_name or "nhạc việt"
                 music_payload = await self._call_music_tool(
-                    fast_intent.song_name,
+                    song_name,
                     on_music_action=on_music_action,
                 )
                 await self._stream_music_preview(
@@ -205,8 +206,9 @@ class ConversationPipeline:
                 await on_music_action(payload)
                 return payload
 
+            song_name = intent.song_name or "nhạc việt"
             payload = await self._call_music_tool(
-                intent.song_name,
+                song_name,
                 on_music_action=on_music_action,
             )
             return payload
@@ -253,23 +255,24 @@ class ConversationPipeline:
                     buffer += chunk
 
                     # Parse emotion tag from start of LLM response: [emotion:xxx]
-                    if not emotion_parsed and "[emotion:" in buffer:
-                        import re
-                        m = re.search(r'\[emotion:(\w+)\]', buffer)
-                        if m:
-                            emotion_name = m.group(1)
-                            emotion_parsed = True
-                            # Remove the tag from buffer so it's not spoken
-                            buffer = buffer[:m.start()] + buffer[m.end():]
-                            full_response = full_response.replace(m.group(0), "", 1)
-                            logger.info(f"Emotion detected: {emotion_name}")
-                            if on_emotion:
-                                await on_emotion(emotion_name)
-                    # If buffer is growing without emotion tag, mark as parsed
-                    if not emotion_parsed and len(buffer) > 60:
-                        emotion_parsed = True
-                        if on_emotion:
-                            await on_emotion("neutral")
+                    # if not emotion_parsed and "[emotion:" in buffer:
+                    #     import re
+                    #     m = re.search(r'\[emotion:(\w+)\]', buffer)
+                    #     if m:
+                    #         emotion_name = m.group(1)
+                    #         emotion_parsed = True
+                    #         # Remove the tag from buffer so it's not spoken
+                    #         buffer = buffer[:m.start()] + buffer[m.end():]
+                    #         full_response = full_response.replace(m.group(0), "", 1)
+                    #         logger.info(f"Emotion detected: {emotion_name}")
+                    #         if on_emotion:
+                    #             await on_emotion(emotion_name)
+                    # Nếu chưa detect được emotion, gửi 'talk' để ESP32 luôn hiển thị icon nói
+                    # if not emotion_parsed and len(buffer) > 10:
+                    #     # Gửi 'talk' một lần khi bắt đầu nói
+                    #     emotion_parsed = True
+                    #     if on_emotion:
+                    #         await on_emotion("talk")
 
                     # Tach tat ca cau da hoan chinh
                     while True:
@@ -329,7 +332,8 @@ class ConversationPipeline:
                     has_spoken_sentence = True
                     continue
 
-                await on_tts_audio(item)
+                if isinstance(item, bytes):
+                    await on_tts_audio(item)
                 total_frames += 1
 
                 # Pacing: đảm bảo không gửi nhanh hơn tốc độ phát

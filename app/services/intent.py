@@ -22,9 +22,11 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class IntentResult:
     intent: str
-    song_name: str
+    song_name: Optional[str] = None
     alarm_time: Optional[str] = None
     alarm_message: Optional[str] = None
+    volume: Optional[int] = None
+    brightness: Optional[int] = None
 
 
 class IntentDetectorService:
@@ -38,6 +40,40 @@ class IntentDetectorService:
         text = (user_text or "").strip()
         lowered = text.lower()
 
+        # 1. Volume/Brightness intent
+        # Regex: tăng/giảm âm lượng/độ sáng (lên|xuống)? (xx%)?
+        volume_patterns = [
+            r"(tăng|giảm)\s*(âm\s*lượng|volume)\s*(lên|xuống)?\s*(\d{1,3})?\s*%?",
+        ]
+        brightness_patterns = [
+            r"(tăng|giảm)\s*(độ\s*sáng|brightness)\s*(lên|xuống)?\s*(\d{1,3})?\s*%?",
+        ]
+
+        for pat in volume_patterns:
+            m = re.search(pat, lowered)
+            if m:
+                action = m.group(1)
+                value = m.group(4)
+                try:
+                    volume = int(value) if value else (100 if action == "tăng" else 0)
+                    volume = max(0, min(100, volume))
+                except Exception:
+                    volume = 100 if action == "tăng" else 0
+                return IntentResult(intent="set_volume", volume=volume)
+
+        for pat in brightness_patterns:
+            m = re.search(pat, lowered)
+            if m:
+                action = m.group(1)
+                value = m.group(4)
+                try:
+                    brightness = int(value) if value else (100 if action == "tăng" else 0)
+                    brightness = max(0, min(100, brightness))
+                except Exception:
+                    brightness = 100 if action == "tăng" else 0
+                return IntentResult(intent="set_brightness", brightness=brightness)
+
+        # 2. Music intent
         trigger_words = (
             "mở",
             "mơ",
@@ -59,12 +95,10 @@ class IntentDetectorService:
         has_trigger = any(w in lowered for w in trigger_words)
         has_music = any(w in lowered for w in music_words)
         if not (has_trigger and has_music):
-            # Check for alarm keywords
+            # 3. Alarm intent
             alarm_triggers = ("báo thức", "đặt báo thức", "hẹn giờ", "báo", "báo cho tôi")
             if any(w in lowered for w in alarm_triggers):
                 # Try extract time with simple regexes
-                # Patterns: HH:MM, H:MM, HhMM (8h30), Hh (8h), H AM/PM, e.g. '8h', '8:30', '8 am'
-
                 time_patterns = [
                     r"(\d{1,2}:\d{2})\s*(am|pm)?",
                     r"(\d{1,2})\s*(am|pm)",
@@ -152,25 +186,37 @@ class IntentDetectorService:
         return IntentResult(intent="music", song_name=song_name)
 
     async def detect(self, user_text: str) -> IntentResult:
-        """Trả về intent và tên bài hát (nếu có)."""
+        """Trả về intent và tham số động (music, alarm, set_volume, set_brightness, reboot, other)."""
         prompt = INTENT_PROMPT
-
         data = await self._llm.chat_json(
             user_text,
             system_prompt=prompt,
             max_tokens=120,
             temperature=0.0,
         )
-
         if not isinstance(data, dict):
-            return IntentResult(intent="other", song_name="")
-
-        raw_intent = str(data.get("intent", "other")).strip().lower()
-        intent = "music" if raw_intent == "music" else "other"
-        song_name = str(data.get("song_name", "")).strip()
-
-        if intent == "music" and not song_name:
-            song_name = "nhạc việt"
-
-        logger.info("Intent detect -> intent=%s, song_name=%s", intent, song_name)
-        return IntentResult(intent=intent, song_name=song_name)
+            return IntentResult(intent="other")
+        intent = str(data.get("intent", "other")).strip().lower()
+        # Map các intent và tham số
+        if intent == "music":
+            song_name = str(data.get("song_name", "")).strip() or "nhạc việt"
+            return IntentResult(intent="music", song_name=song_name)
+        if intent == "alarm":
+            alarm_time = str(data.get("alarm_time", "")).strip()
+            alarm_message = str(data.get("alarm_message", "")).strip() or "Báo thức"
+            return IntentResult(intent="alarm", alarm_time=alarm_time, alarm_message=alarm_message)
+        if intent == "set_volume":
+            try:
+                volume = int(data.get("volume", -1))
+            except Exception:
+                volume = -1
+            return IntentResult(intent="set_volume", volume=volume)
+        if intent == "set_brightness":
+            try:
+                brightness = int(data.get("brightness", -1))
+            except Exception:
+                brightness = -1
+            return IntentResult(intent="set_brightness", brightness=brightness)
+        if intent == "reboot":
+            return IntentResult(intent="reboot")
+        return IntentResult(intent="other")

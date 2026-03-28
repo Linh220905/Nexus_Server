@@ -120,10 +120,16 @@ class STTConfig(BaseModel):
 
 
 class TTSConfig(BaseModel):
-    model_path: str = os.environ.get("TTS_MODEL_PATH", "models/vi_VN-vais1000-medium.onnx")
-    speaker_id: int | None = int(os.environ["TTS_SPEAKER_ID"]) if os.environ.get("TTS_SPEAKER_ID") else None  # cho multi-speaker model
-    speed: float = float(os.environ.get("TTS_SPEED", "0.7"))
+    # === Google Cloud TTS (primary) ===
+    google_tts_api_key: str = os.environ.get("GOOGLE_TTS_API_KEY", "")
+    google_tts_voice: str = os.environ.get("GOOGLE_TTS_VOICE", "vi-VN-Neural2-A")
+    google_tts_language: str = os.environ.get("GOOGLE_TTS_LANGUAGE", "vi-VN")
+    speed: float = float(os.environ.get("TTS_SPEED", "1.0"))
     voice_style: str = os.environ.get("TTS_VOICE_STYLE", "normal")
+
+    # === Piper TTS backup config (không dùng nữa, giữ lại để tham khảo) ===
+    # model_path: str = os.environ.get("TTS_MODEL_PATH", "models/vi_VN-vais1000-medium.onnx")
+    # speaker_id: int | None = int(os.environ["TTS_SPEAKER_ID"]) if os.environ.get("TTS_SPEAKER_ID") else None
 
 
 class AppConfig(BaseModel):

@@ -1,23 +1,20 @@
 """
-Text-to-Speech service using Piper TTS (local, fast).
+Text-to-Speech service using Google Cloud TTS API.
 
-Pipeline: Text → Piper (PCM int16) → resample → Opus frames.
-Streaming per-chunk để giảm giật giữa các câu.
+Pipeline: Text → Google Cloud TTS (MP3) → ffmpeg decode (PCM int16 24kHz) → Opus frames.
+Streaming per-sentence để giảm giật giữa các câu.
+
+Backup của Piper TTS cũ: tts_piper_backup.py
 """
 
 import asyncio
+import base64
 import logging
-import math
 import shutil
 import time
-from math import gcd
-from pathlib import Path
-from queue import Queue
 from typing import AsyncGenerator
 
-import numpy as np
-from piper import PiperVoice
-from scipy.signal import resample_poly
+import aiohttp
 
 from app.config import AudioOutputConfig, TTSConfig
 from app.audio.opus_codec import OpusEncoder
@@ -26,75 +23,29 @@ logger = logging.getLogger(__name__)
 
 
 class TTSService:
-    """Chuyển text thành Opus audio frames dùng Piper TTS."""
+    """Chuyển text thành Opus audio frames dùng Google Cloud TTS API."""
 
     def __init__(self, tts_cfg: TTSConfig, audio_cfg: AudioOutputConfig):
-        model_path = Path(tts_cfg.model_path)
-        if not model_path.is_absolute():
-            model_path = Path(__file__).resolve().parent.parent.parent / model_path
-
-        logger.info(f"Loading Piper TTS model: {model_path}")
-        self._voice = PiperVoice.load(str(model_path))
-        logger.info(
-            f"Piper TTS loaded — sample_rate={self._voice.config.sample_rate}Hz"
-        )
-
-        self._speaker_id = tts_cfg.speaker_id
-        self._speed = tts_cfg.speed
+        self._api_key = tts_cfg.google_tts_api_key
+        self._voice_name = tts_cfg.google_tts_voice
+        self._language_code = tts_cfg.google_tts_language
+        self._speaking_rate = tts_cfg.speed
         self._voice_style = (tts_cfg.voice_style or "normal").strip().lower()
+
+        if not self._api_key or self._api_key == "your-google-tts-api-key-here":
+            logger.warning("⚠️  Google TTS API key chưa được cấu hình! Hãy set GOOGLE_TTS_API_KEY trong .env")
+
         self._target_rate = audio_cfg.sample_rate  # 24000
-        self._source_rate = self._voice.config.sample_rate  # 22050
-        self._need_resample = self._source_rate != self._target_rate
-
-        # Tính tỉ lệ resample: 24000/22050 = 160/147
-        if self._need_resample:
-            g = gcd(self._target_rate, self._source_rate)
-            self._up = self._target_rate // g    # 160
-            self._down = self._source_rate // g  # 147
-
         self._encoder = OpusEncoder(audio_cfg)
         self._frame_bytes = self._encoder.frame_bytes
         self._frame_duration_s = audio_cfg.frame_duration_ms / 1000.0
 
-        # State cho hiệu ứng robot để tránh pop/crack giữa các chunk
-        self._robot_phase = 0.0
-        self._robot_lp_prev = 0.0
+        self._tts_url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self._api_key}"
 
-        self._style_profiles = {
-            "normal": {"enabled": False},
-            "robot": {
-                "enabled": True,
-                "mod_hz": 95.0,
-                "mix": 0.72,
-                "lp_hz": 3000.0,
-            },
-            "robot_soft": {
-                "enabled": True,
-                "mod_hz": 75.0,
-                "mix": 0.55,
-                "lp_hz": 3600.0,
-            },
-            "robot_deep": {
-                "enabled": True,
-                "mod_hz": 58.0,
-                "mix": 0.8,
-                "lp_hz": 2500.0,
-            },
-        }
-
-        if self._voice_style not in self._style_profiles:
-            logger.warning(
-                f"Unknown TTS voice_style='{self._voice_style}', fallback to 'normal'"
-            )
-            self._voice_style = "normal"
-
-        logger.info(f"TTS voice_style: {self._voice_style}")
-
-        # Pre-tạo SynthesisConfig 1 lần
-        from piper.config import SynthesisConfig
-        self._syn_cfg = SynthesisConfig(
-            speaker_id=self._speaker_id,
-            length_scale=1.0 / self._speed if self._speed else 1.0,
+        logger.info(
+            f"Google Cloud TTS initialized — voice={self._voice_name}, "
+            f"lang={self._language_code}, rate={self._speaking_rate}, "
+            f"style={self._voice_style}"
         )
 
     @property
@@ -104,67 +55,82 @@ class TTSService:
 
     async def synthesize(self, text: str) -> AsyncGenerator[bytes, None]:
         """
-        Text → Opus frames (streaming per Piper chunk).
-        Yield opus frames ngay khi có đủ dữ liệu, không đợi hết câu.
+        Text → Google Cloud TTS API → MP3 → PCM 24kHz → Opus frames.
+        Yield opus frames ngay khi có đủ dữ liệu.
         """
         if not text or not text.strip():
             return
 
-        loop = asyncio.get_running_loop()
-        pcm_buffer = bytearray()
         started_at = time.perf_counter()
         first_frame_at: float | None = None
-        total_pcm_bytes = 0
         total_frames = 0
 
         try:
-            # Chạy Piper ở thread riêng và stream PCM chunks về async loop.
-            queue: Queue[bytes | BaseException | object] = Queue(maxsize=8)
-            _DONE = object()
+            # Detect nếu text là SSML (bắt đầu bằng <speak>)
+            text_stripped = text.strip()
+            is_ssml = text_stripped.lower().startswith("<speak")
 
-            def producer() -> None:
-                try:
-                    for audio_chunk in self._voice.synthesize(text, syn_config=self._syn_cfg):
-                        pcm = audio_chunk.audio_int16_bytes
-                        if pcm:
-                            queue.put(pcm)
-                except BaseException as e:
-                    queue.put(e)
-                finally:
-                    queue.put(_DONE)
+            if is_ssml:
+                input_payload = {"ssml": text_stripped}
+            else:
+                input_payload = {"text": text_stripped}
 
-            producer_future = loop.run_in_executor(None, producer)
+            # Gọi Google Cloud TTS API
+            request_body = {
+                "input": input_payload,
+                "voice": {
+                    "languageCode": self._language_code,
+                    "name": self._voice_name,
+                },
+                "audioConfig": {
+                    "audioEncoding": "LINEAR16",
+                    "sampleRateHertz": self._target_rate,
+                    "speakingRate": self._speaking_rate,
+                },
+            }
 
-            while True:
-                item = await loop.run_in_executor(None, queue.get)
-                if item is _DONE:
-                    break
-                if isinstance(item, BaseException):
-                    raise item
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self._tts_url,
+                    json=request_body,
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(
+                            f"Google TTS API error {resp.status}: {error_text}"
+                        )
+                        return
 
-                pcm_chunk = item
-                if self._need_resample:
-                    pcm_chunk = self._resample(pcm_chunk)
+                    result = await resp.json()
+                    audio_content = base64.b64decode(result["audioContent"])
 
-                pcm_chunk = self._apply_voice_style(pcm_chunk)
-                total_pcm_bytes += len(pcm_chunk)
+            # Google TTS LINEAR16 trả về WAV (có header 44 bytes)
+            # Skip WAV header nếu có
+            pcm_data = audio_content
+            if pcm_data[:4] == b"RIFF":
+                # Tìm data chunk
+                idx = pcm_data.find(b"data")
+                if idx >= 0:
+                    # Skip "data" + 4 bytes size
+                    pcm_data = pcm_data[idx + 8:]
 
-                pcm_buffer.extend(pcm_chunk)
+            # Encode PCM → Opus frames
+            pcm_buffer = bytearray(pcm_data)
 
-                # Yield opus frames ngay khi đủ 1 frame
-                while len(pcm_buffer) >= self._frame_bytes:
-                    frame_data = bytes(pcm_buffer[: self._frame_bytes])
-                    pcm_buffer = pcm_buffer[self._frame_bytes :]
-                    total_frames += 1
-                    if first_frame_at is None:
-                        first_frame_at = time.perf_counter()
-                    yield self._encoder.encode(frame_data)
-
-            await producer_future
+            while len(pcm_buffer) >= self._frame_bytes:
+                frame_data = bytes(pcm_buffer[: self._frame_bytes])
+                pcm_buffer = pcm_buffer[self._frame_bytes:]
+                total_frames += 1
+                if first_frame_at is None:
+                    first_frame_at = time.perf_counter()
+                yield self._encoder.encode(frame_data)
 
             # Pad và encode phần còn lại
             if len(pcm_buffer) > 0:
-                pcm_buffer.extend(b"\x00" * (self._frame_bytes - len(pcm_buffer)))
+                pcm_buffer.extend(
+                    b"\x00" * (self._frame_bytes - len(pcm_buffer))
+                )
                 total_frames += 1
                 if first_frame_at is None:
                     first_frame_at = time.perf_counter()
@@ -172,25 +138,34 @@ class TTSService:
 
             elapsed = time.perf_counter() - started_at
             first_frame_ms = (
-                (first_frame_at - started_at) * 1000.0 if first_frame_at is not None else -1.0
+                (first_frame_at - started_at) * 1000.0
+                if first_frame_at is not None
+                else -1.0
             )
-            total_samples = total_pcm_bytes / 2.0
-            audio_seconds = total_samples / float(self._target_rate) if total_samples > 0 else 0.0
+            total_samples = len(pcm_data) / 2.0
+            audio_seconds = (
+                total_samples / float(self._target_rate)
+                if total_samples > 0
+                else 0.0
+            )
             rtf = (elapsed / audio_seconds) if audio_seconds > 0 else 0.0
             logger.info(
-                "TTS timing | chars=%d frames=%d first_frame=%.1fms total=%.3fs audio=%.3fs rtf=%.2f model=%s style=%s",
+                "TTS timing | chars=%d frames=%d first_frame=%.1fms total=%.3fs "
+                "audio=%.3fs rtf=%.2f voice=%s style=%s",
                 len(text),
                 total_frames,
                 first_frame_ms,
                 elapsed,
                 audio_seconds,
                 rtf,
-                Path(self._voice.config.model_path).name if getattr(self._voice.config, "model_path", None) else "(loaded)",
+                self._voice_name,
                 self._voice_style,
             )
 
+        except asyncio.TimeoutError:
+            logger.error("Google TTS API timeout (30s)")
         except Exception as e:
-            logger.error(f"Piper TTS error: {e}", exc_info=True)
+            logger.error(f"Google TTS error: {e}", exc_info=True)
 
     async def stream_audio_url(self, url: str) -> AsyncGenerator[bytes, None]:
         """Stream audio từ URL (ví dụ preview mp3) -> Opus frames 24kHz mono."""
@@ -202,46 +177,32 @@ class TTSService:
             logger.warning("ffmpeg not found, cannot stream audio url")
             return
 
-        # For remote streams (http/https/rtsp) we can use reconnect options; local files
-        # or simple URLs may not support those options on some ffmpeg builds.
-        is_remote = str(url).lower().startswith(("http://", "https://", "rtsp://", "ftp://"))
+        is_remote = str(url).lower().startswith(
+            ("http://", "https://", "rtsp://", "ftp://")
+        )
         if is_remote:
             cmd = [
                 ffmpeg,
                 "-hide_banner",
-                "-loglevel",
-                "error",
-                "-reconnect",
-                "1",
-                "-reconnect_streamed",
-                "1",
-                "-reconnect_delay_max",
-                "3",
-                "-i",
-                url,
-                "-f",
-                "s16le",
-                "-ac",
-                "1",
-                "-ar",
-                str(self._target_rate),
+                "-loglevel", "error",
+                "-reconnect", "1",
+                "-reconnect_streamed", "1",
+                "-reconnect_delay_max", "3",
+                "-i", url,
+                "-f", "s16le",
+                "-ac", "1",
+                "-ar", str(self._target_rate),
                 "pipe:1",
             ]
         else:
-            # Local file: simpler ffmpeg invocation without reconnect flags.
             cmd = [
                 ffmpeg,
                 "-hide_banner",
-                "-loglevel",
-                "error",
-                "-i",
-                url,
-                "-f",
-                "s16le",
-                "-ac",
-                "1",
-                "-ar",
-                str(self._target_rate),
+                "-loglevel", "error",
+                "-i", url,
+                "-f", "s16le",
+                "-ac", "1",
+                "-ar", str(self._target_rate),
                 "pipe:1",
             ]
 
@@ -278,7 +239,11 @@ class TTSService:
                 err = b""
                 if process.stderr is not None:
                     err = await process.stderr.read()
-                logger.warning("ffmpeg exited with code %s: %s", process.returncode, err.decode("utf-8", errors="ignore"))
+                logger.warning(
+                    "ffmpeg exited with code %s: %s",
+                    process.returncode,
+                    err.decode("utf-8", errors="ignore"),
+                )
             logger.info("Music preview streamed: %s frames", frame_count)
         except asyncio.CancelledError:
             process.kill()
@@ -290,31 +255,38 @@ class TTSService:
             if process.returncode is None:
                 process.kill()
 
-    async def stream_full_song_by_query(self, query: str) -> AsyncGenerator[bytes, None]:
+    async def stream_full_song_by_query(
+        self, query: str
+    ) -> AsyncGenerator[bytes, None]:
         """Tìm và phát full audio theo query (ưu tiên YouTube qua yt-dlp)."""
         if not query:
             return
 
         audio_url = await self._resolve_audio_url_from_youtube(query)
         if not audio_url:
-            logger.warning("Cannot resolve full-song url for query: %s", query)
+            logger.warning(
+                "Cannot resolve full-song url for query: %s", query
+            )
             return
 
         async for frame in self.stream_audio_url(audio_url):
             yield frame
 
-    async def _resolve_audio_url_from_youtube(self, query: str) -> str | None:
+    async def _resolve_audio_url_from_youtube(
+        self, query: str
+    ) -> str | None:
         """Dùng yt-dlp lấy direct audio URL cho query."""
         ytdlp = shutil.which("yt-dlp")
         if not ytdlp:
-            logger.warning("yt-dlp not found, full-song streaming unavailable")
+            logger.warning(
+                "yt-dlp not found, full-song streaming unavailable"
+            )
             return None
 
         search_query = f"ytsearch1:{query} official audio"
         cmd = [
             ytdlp,
-            "-f",
-            "bestaudio/best",
+            "-f", "bestaudio/best",
             "-g",
             "--no-playlist",
             search_query,
@@ -334,54 +306,7 @@ class TTSService:
             )
             return None
 
-        url = (stdout or b"").decode("utf-8", errors="ignore").strip().splitlines()
+        url = (
+            (stdout or b"").decode("utf-8", errors="ignore").strip().splitlines()
+        )
         return url[0].strip() if url else None
-
-    def _resample(self, pcm_data: bytes) -> bytes:
-        """Resample PCM int16 dùng polyphase filter (nhanh hơn FFT)."""
-        samples = np.frombuffer(pcm_data, dtype=np.int16).astype(np.float32)
-        resampled = resample_poly(samples, self._up, self._down)
-        return np.clip(resampled, -32768, 32767).astype(np.int16).tobytes()
-
-    def _apply_voice_style(self, pcm_data: bytes) -> bytes:
-        """Áp hiệu ứng giọng nói theo `voice_style` (normal/robot*)."""
-        profile = self._style_profiles[self._voice_style]
-        if not profile.get("enabled", False):
-            return pcm_data
-
-        x = np.frombuffer(pcm_data, dtype=np.int16).astype(np.float32)
-        if x.size == 0:
-            return pcm_data
-
-        # Normalize về [-1, 1]
-        dry = x / 32768.0
-
-        # Ring-modulation kiểu robot: carrier hình vuông để accent robotic rõ.
-        mod_hz = float(profile["mod_hz"])
-        mix = float(profile["mix"])
-        lp_hz = float(profile["lp_hz"])
-
-        phase_inc = 2.0 * math.pi * mod_hz / float(self._target_rate)
-        idx = np.arange(dry.size, dtype=np.float32)
-        phase = self._robot_phase + idx * phase_inc
-        carrier = np.sign(np.sin(phase))
-        carrier[carrier == 0] = 1.0
-        wet = dry * carrier
-
-        # 1-pole low-pass để bớt chói/cắt gắt
-        dt = 1.0 / float(self._target_rate)
-        rc = 1.0 / (2.0 * math.pi * max(lp_hz, 10.0))
-        alpha = dt / (rc + dt)
-
-        y = np.empty_like(wet)
-        prev = self._robot_lp_prev
-        for i, sample in enumerate(wet):
-            prev = prev + alpha * (float(sample) - prev)
-            y[i] = prev
-
-        self._robot_lp_prev = prev
-        self._robot_phase = float((phase[-1] + phase_inc) % (2.0 * math.pi))
-
-        out = (1.0 - mix) * dry + mix * y
-        out = np.clip(out * 32768.0, -32768, 32767).astype(np.int16)
-        return out.tobytes()

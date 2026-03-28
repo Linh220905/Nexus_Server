@@ -76,7 +76,12 @@ async def on_startup():
     intent_providers = [f"{p.name}({p.model})" for p in config.intent_llm.providers]
     logger.info(f"   LLM       : {' → '.join(providers)}")
     logger.info(f"   Intent LLM: {' → '.join(intent_providers)}")
-    logger.info(f"   TTS model : {config.tts.model_path}")
+    # Log TTS model info based on config
+    if hasattr(config.tts, "google_tts_voice"):
+        logger.info(f"   TTS model : Google {config.tts.google_tts_voice} ({config.tts.google_tts_language})")
+    # If Piper TTS is used, uncomment below:
+    # elif hasattr(config.tts, "model_path"):
+    #     logger.info(f"   TTS model : {config.tts.model_path}")
     logger.info(f"   TTS style : {config.tts.voice_style}")
     logger.info(f"   Audio in  : {config.audio_input.sample_rate}Hz")
     logger.info(f"   Audio out : {config.audio_output.sample_rate}Hz")
