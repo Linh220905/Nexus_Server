@@ -116,7 +116,7 @@ class STTConfig(BaseModel):
     api_key: str = os.environ.get("GROQ_API_KEY", "")
     base_url: str = "https://api.groq.com/openai/v1"
     model: str = "whisper-large-v3-turbo" 
-    language: str = "vi"
+    language: str = ""  # Rỗng = auto-detect (hỗ trợ cả tiếng Việt + tiếng Anh)
 
 
 class TTSConfig(BaseModel):
