@@ -6,93 +6,108 @@
 ---
 
 <div align="center">
-  <img src="static/asset/Nexusbot.png" alt="Nexus Robot" width="160"/>
-  <h1>Nexus Server</h1>
-  <p>Real-time AI voice backend for ESP32 clients — STT → LLM → TTS</p>
+  <img src="static/asset/Nexusbot.png" alt="Nexus" width="180"/>
+  <h1>Nexus</h1>
+  <p><strong>Conversational AI for the Physical World</strong></p>
+  <p>Give your devices a voice. Nexus turns any ESP32 into a smart, real-time voice assistant — powered by the latest AI models.</p>
 
-  ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
-  ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)
-  ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-orange?style=flat-square)
-  ![License](https://img.shields.io/badge/License-Internal-lightgrey?style=flat-square)
+  <br/>
+
+  <a href="https://nexus.tanlinh.dev/">🌐 <strong>nexus.tanlinh.dev</strong></a>
+
+  <br/><br/>
+
+  ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+  ![WebSocket](https://img.shields.io/badge/WebSocket-Realtime-FF6F00?style=for-the-badge)
+  ![ESP32](https://img.shields.io/badge/ESP32-Ready-E7352C?style=for-the-badge&logo=espressif&logoColor=white)
+
 </div>
 
 ---
 
 # English Version
 
-## Overview
+## What is Nexus?
 
-**Nexus Server** is a production-grade real-time voice dialogue backend designed for ESP32 devices. It bridges hardware with AI services through a high-performance streaming pipeline, providing a natural conversational voice interface for IoT devices.
+**Nexus** is a production-ready voice AI platform that connects IoT hardware to the world's best AI models — in real time. Speak to your device, and it speaks back, with human-level understanding and natural voice responses.
 
-**Design goals:**
-- ⚡ **Ultra-low latency** — sentence-level streaming minimizes perceived response time
-- 🔌 **Provider-agnostic** — swap any STT, LLM, or TTS provider without touching core logic
-- 📡 **Scalable admin API** — REST endpoints for OAuth2, robot config, and user management
+> 🎯 **One platform. Any device. Instant intelligence.**
+
+### ✨ Why Nexus?
+
+| | Feature | Description |
+|---|---------|-------------|
+| ⚡ | **Real-time Streaming** | Sentence-level pipeline — audio playback begins before the AI finishes thinking |
+| 🧠 | **Multi-Model Support** | Plug in any LLM, STT, or TTS provider — OpenAI, Google, local models, and more |
+| 🔧 | **Zero-Config Devices** | ESP32 connects via WebSocket, auto-registers, and is ready to go |
+| 🛡️ | **Secure by Default** | OAuth2, JWT, session-based auth, and per-device access control |
+| 📊 | **Admin Dashboard** | Web-based control panel to manage devices, users, and AI configurations |
+| 🌐 | **Cloud-Native** | Deploy anywhere — VPS, cloud, or on-premise |
 
 ---
 
-## Architecture
+## Live Demo
+
+> 🔗 **[nexus.tanlinh.dev](https://nexus.tanlinh.dev/)** — Official production instance
+
+---
+
+## How It Works
 
 ```
-ESP32 ──► WebSocket ──► [Decode & Buffer] ──► STT ──► LLM ──► TTS ──► [Opus Encode] ──► ESP32
- (audio in)                                                                              (audio out)
+┌─────────┐        WebSocket         ┌──────────────────────────────────────────┐        WebSocket        ┌─────────┐
+│  ESP32  │ ──── Audio Stream ─────► │  Decode → STT → LLM → TTS → Encode     │ ──── Audio Stream ────► │  ESP32  │
+│ (Mic)   │                          │              Nexus Server               │                          │(Speaker)│
+└─────────┘                          └──────────────────────────────────────────┘                          └─────────┘
 ```
 
-### Processing Flow
+### Pipeline Stages
 
-| Step | Stage | Description |
-|------|-------|-------------|
-| 1 | **Audio Ingestion** | ESP32 transmits raw audio (Opus/PCM) over a persistent WebSocket connection |
-| 2 | **Decode & Buffer** | Server decodes the stream and accumulates frames into a clean PCM buffer |
-| 3 | **Speech-to-Text** | Buffered audio is forwarded to the configured STT provider for transcription |
-| 4 | **LLM Inference** | Transcript + conversation history sent to LLM; response streamed sentence-by-sentence |
-| 5 | **Text-to-Speech** | Each sentence is immediately synthesized by the TTS provider as it arrives |
-| 6 | **Opus Encode & Stream** | Audio is Opus-encoded and streamed back to ESP32 in real time |
+| # | Stage | What Happens |
+|---|-------|-------------|
+| 1 | **Capture** | ESP32 records audio from the onboard microphone and streams it over WebSocket |
+| 2 | **Decode** | Server decodes the Opus/PCM stream into a clean audio buffer |
+| 3 | **Transcribe (STT)** | Audio buffer is sent to the configured speech-to-text engine |
+| 4 | **Think (LLM)** | Transcript + conversation history are processed by the AI model, streamed sentence-by-sentence |
+| 5 | **Speak (TTS)** | Each sentence is synthesized into speech instantly as it arrives from the LLM |
+| 6 | **Stream Back** | Opus-encoded audio is streamed back to the ESP32 speaker in real time |
 
----
-
-## Key Features
-
-- 🎙️ **Real-time voice pipeline** — end-to-end STT → LLM → TTS with sentence-level streaming
-- ⚡ **Streaming responses** — playback begins before synthesis completes, dramatically reducing perceived latency
-- 🤖 **Robot management API** — REST endpoints to register, configure, and monitor devices
-- 🔐 **Multi-auth support** — internal credentials + Google OAuth2 for admin panel access
-- 🔄 **Provider-agnostic design** — swap STT, LLM, or TTS without touching pipeline core
-- 🍪 **Session-based auth** — secure cookie sessions for the admin frontend
+> 💡 The entire round-trip feels **instant** — the user hears the AI respond while it's still generating.
 
 ---
 
-## System Requirements
+## Getting Started
 
-| Dependency | Version | Purpose |
-|------------|---------|---------|
-| Python | `3.10+` | Runtime environment |
-| ffmpeg | latest | Audio processing |
-| libopus | latest | Opus codec (required by `opuslib`) |
-| pip packages | — | See `requirements.txt` |
+### Prerequisites
 
----
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| Python | `3.10+` | Runtime |
+| ffmpeg | latest | Audio transcoding |
+| libopus | latest | Opus codec support |
 
-## Quick Start
+### Installation
 
 ```bash
-# 1. Navigate to project directory
-cd custom_server_xiaozhi
+# Clone the repository
+git clone https://github.com/your-org/nexus-server.git
+cd nexus-server
 
-# 2. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# 3. Configure environment variables
+# Configure your environment
 cp .env.example .env
-# Edit .env with your credentials
+# → Edit .env with your API keys and credentials
 
-# 4. Launch the server
+# Launch
 python run.py
 ```
 
-Server runs at: `http://localhost:8000`
+The server starts at `http://localhost:8000` by default.
 
-**Development mode (with auto-reload):**
+### Development Mode
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -100,31 +115,33 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-## Environment Configuration
+## Configuration
 
-Copy `.env.example` to `.env` and populate the following variables:
+All settings are managed via environment variables in `.env`:
 
 | Variable | Description |
 |----------|-------------|
-| `SESSION_SECRET` | Secret key for session encryption |
-| `JWT_SECRET` | Secret key for JWT token signing |
-| `SECRET_KEY` | General application secret |
-| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
-| `OPENAI_API_KEY` | OpenAI API key (if using OpenAI as LLM/STT) |
-| `LLM_PROVIDERS` | Configured LLM provider(s) |
-| `ADMIN_USERNAME` | Admin panel username |
-| `ADMIN_PASSWORD` | Admin panel password |
+| `SESSION_SECRET` | Encryption key for session cookies |
+| `JWT_SECRET` | Signing key for JWT tokens |
+| `SECRET_KEY` | Application-level secret |
+| `GOOGLE_CLIENT_ID` | Google OAuth2 Client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth2 Client Secret |
+| `OPENAI_API_KEY` | API key for OpenAI services |
+| `LLM_PROVIDERS` | Active LLM provider configuration |
+| `ADMIN_USERNAME` | Admin dashboard login |
+| `ADMIN_PASSWORD` | Admin dashboard password |
 
 ---
 
-## Admin Interface
+## Admin Dashboard
 
-| Endpoint | Description |
-|----------|-------------|
-| `/admin/` | Admin dashboard UI |
-| `/docs` | Interactive API docs (Swagger) |
-| `/auth/google-login` | Google OAuth2 login |
+Access the built-in management interface:
+
+| URL | Description |
+|-----|-------------|
+| `/admin/` | Device & user management dashboard |
+| `/docs` | Interactive API reference (Swagger UI) |
+| `/auth/google-login` | Google OAuth2 sign-in |
 
 ---
 
@@ -132,26 +149,42 @@ Copy `.env.example` to `.env` and populate the following variables:
 
 ```
 app/
-├── api/            # REST routes: auth, OAuth2, robot management
-├── websocket/      # Real-time WebSocket handler
-├── services/       # LLM / STT / TTS pipeline services
-├── database/       # SQLite connection & initialization
-└── auth/           # Auth models, security helpers, CRUD
+├── api/            # RESTful endpoints — auth, OAuth2, device management, OTA
+├── websocket/      # Real-time WebSocket voice handler
+├── services/       # AI pipeline — LLM, STT, TTS orchestration
+├── mcp/            # MCP tools & alarm scheduling
+├── database/       # Database connection & initialization
+├── robots/         # Device registry — models & CRUD
+└── auth/           # Authentication — models, security, schemas
 
 static/
-├── admin/          # Admin frontend assets
-└── asset/          # Images & logos
+├── admin/          # Admin dashboard frontend (HTML/CSS/JS)
+└── asset/          # Brand assets & media
 
 run.py              # Application entry point
 requirements.txt    # Python dependencies
-.env                # Environment configuration (not committed)
+.env                # Environment config (not committed)
 ```
+
+---
+
+## Roadmap
+
+- [x] Real-time voice pipeline (STT → LLM → TTS)
+- [x] Multi-provider support (OpenAI, Google, custom)
+- [x] Admin dashboard with device management
+- [x] Google OAuth2 integration
+- [x] OTA firmware updates for ESP32
+- [x] MCP tools & alarm scheduling
+- [ ] Multi-language voice support expansion
+- [ ] Analytics & conversation insights dashboard
+- [ ] Mobile companion app
 
 ---
 
 ## License
 
-This project is intended for internal development and integration purposes. Before any commercial release, please review the licenses of all third-party models, media assets, and external services in use.
+This project is proprietary software developed by **Tan Linh**. All rights reserved. Third-party dependencies are subject to their respective licenses. For licensing inquiries, please visit [nexus.tanlinh.dev](https://nexus.tanlinh.dev/).
 
 ---
 
@@ -161,79 +194,86 @@ This project is intended for internal development and integration purposes. Befo
 
 # Phiên Bản Tiếng Việt
 
-## Tổng quan
+## Nexus là gì?
 
-**Nexus Server** là backend xử lý hội thoại giọng nói theo thời gian thực, được thiết kế dành riêng cho thiết bị ESP32. Hệ thống kết nối phần cứng với các dịch vụ AI thông qua pipeline streaming hiệu suất cao, tạo giao diện hội thoại giọng nói tự nhiên cho thiết bị IoT.
+**Nexus** là nền tảng AI giọng nói sẵn sàng triển khai, kết nối phần cứng IoT với các mô hình AI hàng đầu thế giới — theo thời gian thực. Nói chuyện với thiết bị của bạn, và nó sẽ trả lời bằng giọng nói tự nhiên, với khả năng hiểu ngữ cảnh như con người.
 
-**Mục tiêu thiết kế:**
-- ⚡ **Độ trễ cực thấp** — streaming theo từng câu giảm thiểu thời gian chờ cảm nhận
-- 🔌 **Độc lập provider** — hoán đổi bất kỳ STT, LLM, TTS nào mà không ảnh hưởng logic lõi
-- 📡 **Admin API mở rộng** — REST endpoints cho OAuth2, cấu hình robot và quản lý người dùng
+> 🎯 **Một nền tảng. Mọi thiết bị. Trí tuệ tức thì.**
+
+### ✨ Tại sao chọn Nexus?
+
+| | Tính năng | Mô tả |
+|---|----------|-------|
+| ⚡ | **Streaming thời gian thực** | Pipeline xử lý theo câu — audio phát lại trước khi AI suy nghĩ xong |
+| 🧠 | **Hỗ trợ đa mô hình** | Tích hợp bất kỳ LLM, STT, TTS nào — OpenAI, Google, model local, v.v. |
+| 🔧 | **Thiết bị không cần cấu hình** | ESP32 kết nối qua WebSocket, tự đăng ký và sẵn sàng hoạt động |
+| 🛡️ | **Bảo mật mặc định** | OAuth2, JWT, xác thực session, kiểm soát truy cập theo thiết bị |
+| 📊 | **Bảng điều khiển Admin** | Giao diện web quản lý thiết bị, người dùng và cấu hình AI |
+| 🌐 | **Cloud-Native** | Triển khai mọi nơi — VPS, cloud hoặc on-premise |
 
 ---
 
-## Kiến trúc
+## Demo trực tiếp
+
+> 🔗 **[nexus.tanlinh.dev](https://nexus.tanlinh.dev/)** — Phiên bản production chính thức
+
+---
+
+## Cách hoạt động
 
 ```
-ESP32 ──► WebSocket ──► [Giải mã & Đệm] ──► STT ──► LLM ──► TTS ──► [Mã hóa Opus] ──► ESP32
-(audio vào)                                                                              (audio ra)
+┌─────────┐        WebSocket         ┌──────────────────────────────────────────┐        WebSocket        ┌─────────┐
+│  ESP32  │ ──── Luồng Audio ──────► │  Giải mã → STT → LLM → TTS → Mã hóa   │ ──── Luồng Audio ─────► │  ESP32  │
+│ (Mic)   │                          │              Nexus Server               │                          │(Speaker)│
+└─────────┘                          └──────────────────────────────────────────┘                          └─────────┘
 ```
 
-### Luồng xử lý
+### Các giai đoạn xử lý
 
-| Bước | Giai đoạn | Mô tả |
-|------|-----------|-------|
-| 1 | **Nhận Audio** | ESP32 truyền audio thô (Opus/PCM) qua kết nối WebSocket liên tục |
-| 2 | **Giải mã & Đệm** | Server giải mã luồng và gom các khung thành buffer PCM sạch |
-| 3 | **Nhận dạng giọng nói (STT)** | Audio đã đệm được chuyển tới provider STT đã cấu hình |
-| 4 | **Suy luận LLM** | Văn bản + lịch sử hội thoại gửi tới LLM; phản hồi stream theo từng câu |
-| 5 | **Tổng hợp giọng nói (TTS)** | Mỗi câu lập tức được tổng hợp ngay khi nhận từ LLM |
-| 6 | **Mã hóa Opus & Stream** | Audio được mã hóa Opus và stream ngược về ESP32 theo thời gian thực |
+| # | Giai đoạn | Chi tiết |
+|---|-----------|----------|
+| 1 | **Thu âm** | ESP32 ghi âm từ microphone và stream qua WebSocket |
+| 2 | **Giải mã** | Server giải mã luồng Opus/PCM thành buffer audio sạch |
+| 3 | **Nhận dạng (STT)** | Buffer audio được gửi tới engine nhận dạng giọng nói |
+| 4 | **Suy luận (LLM)** | Văn bản + lịch sử hội thoại được xử lý bởi AI, stream theo từng câu |
+| 5 | **Tổng hợp (TTS)** | Mỗi câu được tổng hợp thành giọng nói ngay khi nhận từ LLM |
+| 6 | **Stream về** | Audio mã hóa Opus được stream về loa ESP32 theo thời gian thực |
 
----
-
-## Tính năng chính
-
-- 🎙️ **Pipeline giọng nói thời gian thực** — STT → LLM → TTS đầu cuối với streaming theo câu
-- ⚡ **Phản hồi streaming** — phát audio trước khi tổng hợp hoàn tất, giảm đáng kể độ trễ
-- 🤖 **API quản lý robot** — REST endpoints để đăng ký, cấu hình và giám sát thiết bị
-- 🔐 **Xác thực đa phương thức** — tài khoản nội bộ + Google OAuth2 cho admin panel
-- 🔄 **Thiết kế độc lập provider** — thay STT, LLM, TTS mà không ảnh hưởng pipeline lõi
-- 🍪 **Xác thực session** — cookie session bảo mật cho giao diện admin frontend
+> 💡 Toàn bộ chu trình diễn ra **tức thì** — người dùng nghe AI trả lời trong khi nó vẫn đang tạo câu trả lời.
 
 ---
 
-## Yêu cầu hệ thống
+## Bắt đầu nhanh
 
-| Thành phần | Phiên bản | Mục đích |
+### Yêu cầu hệ thống
+
+| Thành phần | Phiên bản | Ghi chú |
 |------------|-----------|---------|
-| Python | `3.10+` | Môi trường chạy |
+| Python | `3.10+` | Runtime |
 | ffmpeg | mới nhất | Xử lý audio |
-| libopus | mới nhất | Codec Opus (dùng bởi `opuslib`) |
-| pip packages | — | Xem `requirements.txt` |
+| libopus | mới nhất | Codec Opus |
 
----
-
-## Cài đặt nhanh
+### Cài đặt
 
 ```bash
-# 1. Di chuyển vào thư mục dự án
-cd custom_server_xiaozhi
+# Clone repository
+git clone https://github.com/your-org/nexus-server.git
+cd nexus-server
 
-# 2. Cài đặt dependencies
+# Cài đặt dependencies
 pip install -r requirements.txt
 
-# 3. Cấu hình biến môi trường
+# Cấu hình môi trường
 cp .env.example .env
-# Chỉnh sửa .env với thông tin của bạn
+# → Chỉnh sửa .env với API keys và thông tin xác thực của bạn
 
-# 4. Khởi động server
+# Khởi chạy
 python run.py
 ```
 
-Server mặc định chạy tại: `http://localhost:8000`
+Server mặc định chạy tại `http://localhost:8000`.
 
-**Môi trường phát triển (với auto-reload):**
+### Chế độ phát triển
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -241,47 +281,51 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-## Cấu hình môi trường
+## Cấu hình
 
-Sao chép `.env.example` thành `.env` và điền các biến sau:
+Tất cả thiết lập được quản lý qua biến môi trường trong `.env`:
 
 | Biến | Mô tả |
 |------|-------|
-| `SESSION_SECRET` | Khóa bí mật mã hóa session |
-| `JWT_SECRET` | Khóa bí mật ký JWT token |
-| `SECRET_KEY` | Khóa bí mật chung của ứng dụng |
+| `SESSION_SECRET` | Khóa mã hóa session cookie |
+| `JWT_SECRET` | Khóa ký JWT token |
+| `SECRET_KEY` | Khóa bí mật ứng dụng |
 | `GOOGLE_CLIENT_ID` | Client ID của Google OAuth2 |
 | `GOOGLE_CLIENT_SECRET` | Client Secret của Google OAuth2 |
-| `OPENAI_API_KEY` | API key OpenAI (nếu dùng OpenAI làm LLM/STT) |
-| `LLM_PROVIDERS` | Provider LLM được cấu hình |
-| `ADMIN_USERNAME` | Tên đăng nhập admin |
+| `OPENAI_API_KEY` | API key cho dịch vụ OpenAI |
+| `LLM_PROVIDERS` | Cấu hình LLM provider đang dùng |
+| `ADMIN_USERNAME` | Tài khoản đăng nhập admin |
 | `ADMIN_PASSWORD` | Mật khẩu admin |
 
 ---
 
-## Giao diện Admin
+## Bảng điều khiển Admin
 
-| Đường dẫn | Mô tả |
-|-----------|-------|
-| `/admin/` | Trang quản trị |
-| `/docs` | Tài liệu API tương tác (Swagger) |
-| `/auth/google-login` | Đăng nhập Google OAuth2 |
+Truy cập giao diện quản trị tích hợp:
+
+| URL | Mô tả |
+|-----|-------|
+| `/admin/` | Quản lý thiết bị & người dùng |
+| `/docs` | Tài liệu API tương tác (Swagger UI) |
+| `/auth/google-login` | Đăng nhập qua Google OAuth2 |
 
 ---
 
-## Cấu trúc thư mục
+## Cấu trúc dự án
 
 ```
 app/
-├── api/            # REST routes: auth, OAuth2, quản lý robot
-├── websocket/      # Handler WebSocket thời gian thực
-├── services/       # Pipeline LLM / STT / TTS
-├── database/       # Kết nối & khởi tạo SQLite
-└── auth/           # Model xác thực, bảo mật, CRUD
+├── api/            # RESTful endpoints — auth, OAuth2, quản lý thiết bị, OTA
+├── websocket/      # WebSocket xử lý giọng nói thời gian thực
+├── services/       # Pipeline AI — điều phối LLM, STT, TTS
+├── mcp/            # MCP tools & lập lịch báo thức
+├── database/       # Kết nối & khởi tạo database
+├── robots/         # Registry thiết bị — models & CRUD
+└── auth/           # Xác thực — models, bảo mật, schemas
 
 static/
-├── admin/          # Tài nguyên frontend admin
-└── asset/          # Hình ảnh & logo
+├── admin/          # Frontend bảng điều khiển (HTML/CSS/JS)
+└── asset/          # Tài nguyên thương hiệu & media
 
 run.py              # Điểm khởi chạy ứng dụng
 requirements.txt    # Dependencies Python
@@ -290,10 +334,29 @@ requirements.txt    # Dependencies Python
 
 ---
 
-## Giấy phép
+## Lộ trình phát triển
 
-Dự án phục vụ mục đích phát triển và tích hợp nội bộ. Vui lòng kiểm tra giấy phép của tất cả các model, media và dịch vụ bên thứ ba trước khi phát hành thương mại.
+- [x] Pipeline giọng nói thời gian thực (STT → LLM → TTS)
+- [x] Hỗ trợ đa provider (OpenAI, Google, tùy chỉnh)
+- [x] Bảng điều khiển admin với quản lý thiết bị
+- [x] Tích hợp Google OAuth2
+- [x] Cập nhật firmware OTA cho ESP32
+- [x] MCP tools & lập lịch báo thức
+- [ ] Mở rộng hỗ trợ đa ngôn ngữ giọng nói
+- [ ] Dashboard phân tích & insights hội thoại
+- [ ] Ứng dụng mobile đồng hành
 
 ---
 
-<p align="right"><a href="#english-version">🇬🇧 Back to English</a></p>
+## Giấy phép
+
+Dự án này là phần mềm độc quyền được phát triển bởi **Tan Linh**. Bảo lưu mọi quyền. Các thư viện bên thứ ba tuân theo giấy phép tương ứng. Mọi thắc mắc về giấy phép, vui lòng truy cập [nexus.tanlinh.dev](https://nexus.tanlinh.dev/).
+
+---
+
+<p align="center">
+  <br/>
+  <strong>Built with ❤️ by <a href="https://nexus.tanlinh.dev/">Tan Linh</a></strong>
+  <br/><br/>
+  <a href="https://nexus.tanlinh.dev/">🌐 nexus.tanlinh.dev</a>
+</p>

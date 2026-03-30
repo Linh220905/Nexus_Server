@@ -43,15 +43,15 @@ app.include_router(auth_local_router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/admin/", response_class=HTMLResponse)
-async def admin_panel():
-    admin_html_path = Path("static/admin/index.html")
-    if admin_html_path.exists():
-        with open(admin_html_path, "r", encoding="utf-8") as f:
+@app.get("/", response_class=HTMLResponse)
+async def dashboard_panel():
+    dashboard_html_path = Path("static/admin/index.html")
+    if dashboard_html_path.exists():
+        with open(dashboard_html_path, "r", encoding="utf-8") as f:
             content = f.read()
         return HTMLResponse(content=content)
     else:
-        return HTMLResponse(content="<h1>Admin Panel not found</h1>")
+        return HTMLResponse(content="<h1>Dashboard not found</h1>")
 
 
 @app.websocket("/")
@@ -70,7 +70,7 @@ async def on_startup():
     logger.info("🚀 Nexus Server started")
     logger.info(f"   WebSocket : ws://0.0.0.0:{config.server.port}/")
     logger.info(f"   REST API  : http://0.0.0.0:{config.server.port}/api/")
-    logger.info(f"   Admin Panel: http://0.0.0.0:{config.server.port}/admin/")
+    logger.info(f"   Dashboard: http://0.0.0.0:{config.server.port}/")
     logger.info(f"   Docs      : http://0.0.0.0:{config.server.port}/docs")
     providers = [f"{p.name}({p.model})" for p in config.llm.providers]
     intent_providers = [f"{p.name}({p.model})" for p in config.intent_llm.providers]
