@@ -1136,8 +1136,8 @@
 
   async function handleLogout() {
     currentUser = null;
-    await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
-    window.location.reload();
+    // Backend trả về redirect 302 → về trang login
+    window.location.href = '/auth/logout';
   }
 
   function switchTab(tab, el) {

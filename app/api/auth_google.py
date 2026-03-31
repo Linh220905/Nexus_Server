@@ -107,8 +107,11 @@ async def get_current_user(request: Request):
     return {"email": payload["email"], "role": payload.get("role", "viewer")}
 
 
-@router.post("/logout")
+@router.api_route("/logout", methods=["GET", "POST"])
 async def logout():
-    response = JSONResponse(content={"detail": "Logged out"})
+    response = RedirectResponse(url="/", status_code=302)
+    response.delete_cookie(key="nexus_session", path="/", domain=".tanlinh.dev")
     response.delete_cookie(key="nexus_session", path="/")
+    response.delete_cookie(key="session_backend", path="/", domain=".tanlinh.dev")
+    response.delete_cookie(key="session_backend", path="/")
     return response

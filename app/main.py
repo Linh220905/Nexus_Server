@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pathlib import Path
@@ -53,7 +53,22 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
-async def root_redirect():
+async def root_page(request: Request):
+    """Trang root: nếu đã đăng nhập → redirect /dashboard/, chưa → hiện login page."""
+    session_token = request.cookies.get("nexus_session")
+    if session_token:
+        try:
+            from app.api.auth_google import decode_session_token
+            decode_session_token(session_token)
+            return RedirectResponse(url="/dashboard/")
+        except Exception:
+            pass
+    # Chưa đăng nhập → hiện trang login (cùng HTML với /dashboard/)
+    dashboard_html_path = Path("static/admin/index.html")
+    if dashboard_html_path.exists():
+        with open(dashboard_html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
     return RedirectResponse(url="/dashboard/")
 
 
