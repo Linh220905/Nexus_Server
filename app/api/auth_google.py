@@ -75,22 +75,28 @@ async def google_login(request: Request):
 async def google_auth(request: Request):
     token = await oauth.google.authorize_access_token(request)
     user = token.get("userinfo")
+
     if not user:
         raise HTTPException(status_code=400, detail="Google login failed")
 
     session_token = create_session_token(user["email"], role="viewer")
 
-    response = RedirectResponse(url="/", status_code=302)
-    response.set_cookie(
-        key="nexus_session",
-        value=session_token,
-        httponly=True,
-        max_age=86400,
-        samesite="none",   # allow cross-site cookie for HTTPS
-        secure=True,        # required for SameSite=None on HTTPS
-        path="/",
-        domain="nexus.tanlinh.dev",  # đảm bảo cookie lưu đúng domain
+    response = RedirectResponse(
+        url="https://nexus.tanlinh.dev",
+        status_code=302
     )
+
+    response.headers.append(
+        "Set-Cookie",
+        f"nexus_session={session_token}; "
+        f"Path=/; "
+        f"Max-Age=86400; "
+        f"HttpOnly; "
+        f"Secure; "
+        f"SameSite=None; "
+        f"Domain=.tanlinh.dev"
+    )
+
     return response
 
 
