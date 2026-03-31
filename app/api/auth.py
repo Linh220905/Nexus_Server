@@ -6,6 +6,7 @@ from app.auth.crud import create_user, authenticate_user
 from app.auth.security import create_access_token
 from app.auth.models import UserCreate as DbUserCreate
 from app.api.auth_google import create_session_token
+from app.api.session_utils import set_auth_cookie
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import jwt
 from datetime import datetime, timedelta, timezone
-
+from app.api.session_utils import set_auth_cookie
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 load_dotenv()
