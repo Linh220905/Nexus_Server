@@ -1276,7 +1276,7 @@
       const res2 = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/config', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ system_prompt: systemPrompt }),
-);
+      });
       if (res2.ok) { toast('✓', 'Changes saved!', 'success'); closeModal(); await loadRobots(); }
       else { const err = await res2.json().catch(()=>({})); toast('✕', err.detail || 'Update failed', 'error'); }
     } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); }
