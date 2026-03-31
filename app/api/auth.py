@@ -20,6 +20,17 @@ async def register(user_data: UserCreate):
         )
     return {"message": "User created successfully"}
 
+def set_auth_cookie(response, token: str):
+    response.set_cookie(
+        key="nexus_session",
+        value=token,
+        httponly=True,
+        max_age=86400,
+        samesite="none",     
+        secure=True,       
+        domain=".tanlinh.dev",  
+        path="/",
+    )
 
 @router.post("/login", response_model=Token)
 async def login(
@@ -49,19 +60,25 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expires = timedelta(minutes=30)
     access_token = create_access_token(
-        data={"sub": user.username, "role": getattr(user, "role", "user")}, expires_delta=access_token_expires
+        data={
+            "sub": user.username,
+            "role": getattr(user, "role", "user")
+        },
+        expires_delta=timedelta(minutes=30)
     )
 
-    session_token = create_session_token(email=user.username, role=getattr(user, "role", "user"))
-    response = JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
-    response.set_cookie(
-        key="nexus_session",
-        value=session_token,
-        httponly=True,
-        max_age=86400,
-        samesite="lax",
-        path="/",
+    session_token = create_session_token(
+        email=user.username,
+        role=getattr(user, "role", "user")
     )
+
+    response = JSONResponse(content={
+        "access_token": access_token,
+        "token_type": "bearer"
+    })
+
+
+    set_auth_cookie(response, session_token)
+
     return response

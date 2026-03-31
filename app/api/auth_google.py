@@ -79,26 +79,20 @@ async def google_auth(request: Request):
     if not user:
         raise HTTPException(status_code=400, detail="Google login failed")
 
-    session_token = create_session_token(user["email"], role="viewer")
+    session_token = create_session_token(
+        user["email"],
+        role="viewer"
+    )
 
     response = RedirectResponse(
         url="https://nexus.tanlinh.dev",
         status_code=302
     )
 
-    response.headers.append(
-        "Set-Cookie",
-        f"nexus_session={session_token}; "
-        f"Path=/; "
-        f"Max-Age=86400; "
-        f"HttpOnly; "
-        f"Secure; "
-        f"SameSite=None; "
-        f"Domain=.tanlinh.dev"
-    )
+    # 🔥 dùng chung
+    set_auth_cookie(response, session_token)
 
     return response
-
 
 @router.get("/me")
 async def get_current_user(request: Request):
