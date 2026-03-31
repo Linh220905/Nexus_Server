@@ -32,13 +32,14 @@ app = FastAPI(
 )
 
 # SessionMiddleware cho OAuth state (authlib cần session để lưu state/nonce)
-# https_only=True + same_site="none" để cookie hoạt động đúng trên HTTPS với Google redirect
+# same_site="lax" đủ cho OAuth redirect (top-level GET navigation)
+# https_only=False để Starlette xóa cookie đúng cách (tránh lỗi Secure mismatch khi clear)
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET", "your-very-secret-session-key"),
     session_cookie="session_backend",
-    https_only=True,
-    same_site="none",
+    https_only=False,
+    same_site="lax",
 )
 
 app.include_router(api_router)

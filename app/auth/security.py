@@ -16,6 +16,8 @@ from ..config import config
 # Secret key for JWT encoding/decoding (ưu tiên từ biến môi trường)
 import os
 SECRET_KEY = os.environ.get("JWT_SECRET", "changeme-please-set-JWT_SECRET")
+# Google OAuth dùng SECRET_KEY env var để ký token
+GOOGLE_SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -74,15 +76,21 @@ async def get_current_user(request: Request, credentials: HTTPAuthorizationCrede
         token = request.cookies.get("nexus_session")
     if not token:
         raise credentials_exception
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: Optional[str] = payload.get("sub") or payload.get("email")
-        role: Optional[str] = payload.get("role")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username, role=role)
-    except JWTError:
+    # Thử decode với cả JWT_SECRET và SECRET_KEY (Google OAuth)
+    payload = None
+    for secret in [SECRET_KEY, GOOGLE_SECRET_KEY]:
+        try:
+            payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+            break
+        except JWTError:
+            continue
+    if payload is None:
         raise credentials_exception
+    username: Optional[str] = payload.get("sub") or payload.get("email")
+    role: Optional[str] = payload.get("role")
+    if username is None:
+        raise credentials_exception
+    token_data = TokenData(username=username, role=role)
     return token_data
 
 
