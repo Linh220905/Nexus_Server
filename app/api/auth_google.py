@@ -85,7 +85,7 @@ async def google_auth(request: Request):
     )
 
     response = RedirectResponse(
-        url="https://nexus.tanlinh.dev",
+        url="https://nexus.tanlinh.dev/dashboard/",
         status_code=302
     )
 
