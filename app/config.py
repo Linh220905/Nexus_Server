@@ -128,6 +128,7 @@ class TTSConfig(BaseModel):
     google_tts_language: str = os.environ.get("GOOGLE_TTS_LANGUAGE", "vi-VN")
     speed: float = float(os.environ.get("TTS_SPEED", "1.0"))
     voice_style: str = os.environ.get("TTS_VOICE_STYLE", "normal")
+    volume_gain_db: float = float(os.environ.get("TTS_VOLUME_GAIN_DB", "6.0"))
 
     # === Piper TTS backup config (không dùng nữa, giữ lại để tham khảo) ===
     # model_path: str = os.environ.get("TTS_MODEL_PATH", "models/vi_VN-vais1000-medium.onnx")

@@ -67,7 +67,7 @@ def require_viewer(request: Request) -> dict:
 
 @router.get("/google-login")
 async def google_login(request: Request):
-    redirect_uri = "http://localhost:8000/auth/google-auth"
+    redirect_uri = "https://nexus.tanlinh.dev/auth/google-auth"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
