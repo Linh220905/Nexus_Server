@@ -1,3 +1,41 @@
+
+# Đảm bảo logout xóa cookie đúng domain, path, samesite, secure
+from fastapi import APIRouter, HTTPException, status, Request, Form
+from fastapi.responses import JSONResponse, RedirectResponse
+from datetime import timedelta
+from app.auth.schemas import UserCreate, UserLogin, Token
+from app.auth.crud import create_user, authenticate_user
+from app.auth.security import create_access_token
+from app.auth.models import UserCreate as DbUserCreate
+from app.api.auth_google import create_session_token
+from app.api.session_utils import set_auth_cookie
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@router.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(
+        key="nexus_session",
+        value="",
+        max_age=0,
+        path="/",
+        domain=".tanlinh.dev",
+        secure=True,
+        httponly=True,
+        samesite="none",
+    )
+    # Xóa thêm trường hợp không domain (phòng khi cookie cũ không có domain)
+    response.set_cookie(
+        key="nexus_session",
+        value="",
+        max_age=0,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="none",
+    )
+    return response
 from fastapi import APIRouter, HTTPException, status, Request, Form
 from fastapi.responses import JSONResponse
 from datetime import timedelta
