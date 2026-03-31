@@ -110,8 +110,29 @@ async def get_current_user(request: Request):
 @router.api_route("/logout", methods=["GET", "POST"])
 async def logout():
     response = RedirectResponse(url="/", status_code=302)
-    response.delete_cookie(key="nexus_session", path="/", domain=".tanlinh.dev")
-    response.delete_cookie(key="nexus_session", path="/")
+    # Phải set cookie với CÙNG attributes (domain, path, secure, samesite, httponly)
+    # như lúc tạo, nhưng value="" và max_age=0 để browser thực sự xóa
+    response.set_cookie(
+        key="nexus_session",
+        value="",
+        max_age=0,
+        path="/",
+        domain=".tanlinh.dev",
+        secure=True,
+        httponly=True,
+        samesite="none",
+    )
+    # Xóa thêm nexus_session không có domain (phòng trường hợp set không có domain)
+    response.set_cookie(
+        key="nexus_session",
+        value="",
+        max_age=0,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="none",
+    )
+    # Xóa session_backend (OAuth temp cookie)
     response.delete_cookie(key="session_backend", path="/", domain=".tanlinh.dev")
     response.delete_cookie(key="session_backend", path="/")
     return response

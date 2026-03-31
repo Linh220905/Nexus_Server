@@ -729,11 +729,11 @@
 <div id="app">
   <nav class="sidebar">
     <div class="sb-brand">
-      <div class="sb-logo-box" id="sb-logo-box">
+      <div class="sb-logo-box" id="sb-logo-box" style="cursor:pointer" onclick="window.location.href='/'">
         <img src="" id="sb-logo-img" alt="" onerror="this.style.display='none'; document.getElementById('sb-logo-emoji').style.display='block'" />
         <span id="sb-logo-emoji" style="display:none; font-size:1.1rem; color:#fff;">🤖</span>
       </div>
-      <div class="sb-brand-text">
+      <div class="sb-brand-text" style="cursor:pointer" onclick="window.location.href='/'">
         <h1>Nexus<span>.</span></h1>
         <p>Robot Platform</p>
       </div>
@@ -1138,6 +1138,8 @@
     currentUser = null;
     // Backend trả về redirect 302 → về trang login
     window.location.href = '/auth/logout';
+    // Sau khi logout, chuyển về root sau 1s nếu backend không redirect
+    setTimeout(() => { window.location.href = '/'; }, 1200);
   }
 
   function switchTab(tab, el) {

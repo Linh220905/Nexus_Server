@@ -177,11 +177,8 @@ class RobotManager {
     logout() {
         this.token = null;
         localStorage.removeItem('token');
-        
-        document.getElementById('main-app').style.display = 'none';
-        document.getElementById('login-container').style.display = 'block';
-        
-        this.showMessage('Logged out successfully', 'success');
+        // Redirect đến server để xóa httponly cookie nexus_session
+        window.location.href = '/auth/logout';
     }
 
     async loadRobots() {
