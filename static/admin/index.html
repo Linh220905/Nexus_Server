@@ -1127,9 +1127,9 @@
         toast('✕', err.detail || 'Login failed', 'error');
         btn.innerHTML = 'Sign In →'; btn.disabled = false; return;
       }
-      const meRes = await fetch('/auth/me', { credentials: 'include' });
-      if (meRes.ok) { const d = await meRes.json(); showApp(d.email, d.role||'admin'); }
-      else { showApp(u, 'admin'); }
+      // Sau khi login thành công, chuyển về /dashboard/ để tránh redirect loop
+      window.location.href = '/dashboard/';
+      return;
     } catch(err) { toast('✕', 'Network error', 'error'); }
     btn.innerHTML = 'Sign In →'; btn.disabled = false;
   }
@@ -1138,7 +1138,7 @@
     currentUser = null;
     // Backend trả về redirect 302 → về trang login
     window.location.href = '/auth/logout';
-    // Sau khi logout, chuyển về root sau 1s nếu backend không redirect
+    // Sau khi logout, chuyển về / sau 1s nếu backend không redirect
     setTimeout(() => { window.location.href = '/'; }, 1200);
   }
 
