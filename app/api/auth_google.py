@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import jwt
 from datetime import datetime, timedelta, timezone
-from app.api.session_utils import set_auth_cookie
+from app.api.session_utils import set_auth_cookie, clear_auth_cookie
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 load_dotenv()
@@ -67,7 +67,7 @@ def require_viewer(request: Request) -> dict:
 
 @router.get("/google-login")
 async def google_login(request: Request):
-    redirect_uri = "https://nexus.tanlinh.dev/auth/google-auth"
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI") or str(request.url_for("google_auth"))
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -84,10 +84,8 @@ async def google_auth(request: Request):
         role="viewer"
     )
 
-    response = RedirectResponse(
-        url="https://nexus.tanlinh.dev/dashboard/",
-        status_code=302
-    )
+    frontend_redirect = os.getenv("FRONTEND_REDIRECT_URI") or str(request.base_url) + "dashboard/"
+    response = RedirectResponse(url=frontend_redirect, status_code=302)
 
     set_auth_cookie(response, session_token)
 
@@ -110,23 +108,7 @@ async def get_current_user(request: Request):
 @router.api_route("/logout", methods=["GET", "POST"])
 async def logout():
     response = RedirectResponse(url="/", status_code=302)
-    # Phải set cookie với CÙNG attributes (domain, path, secure, samesite, httponly)
-    # như lúc tạo, nhưng value="" và max_age=0 để browser thực sự xóa
-    response.delete_cookie(
-        key="nexus_session",
-        path="/",
-        domain=".tanlinh.dev",
-        secure=True,
-        httponly=True,
-        samesite="none",
-    )
-    response.delete_cookie(
-        key="nexus_session",
-        path="/",
-        secure=True,
-        httponly=True,
-        samesite="none",
-    )
+    clear_auth_cookie(response)
     # Xóa session_backend (OAuth temp cookie)
     response.delete_cookie(key="session_backend", path="/", domain=".tanlinh.dev")
     response.delete_cookie(key="session_backend", path="/")

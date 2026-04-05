@@ -848,6 +848,43 @@
             </div>
             <div class="form-row">
               <div class="field">
+                <label>TTS Provider</label>
+                <select id="robot-tts-provider">
+                  <option value="google">Google Cloud TTS</option>
+                  <option value="edge">Microsoft Edge TTS</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>TTS Language Mode</label>
+                <select id="robot-tts-language">
+                  <option value="auto">Auto</option>
+                  <option value="vi">Vietnamese</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Google Voice (VI)</label>
+                <input type="text" id="robot-google-voice-vi" value="vi-VN-Neural2-A" placeholder="vi-VN-Neural2-A" />
+              </div>
+              <div class="field">
+                <label>Google Voice (EN)</label>
+                <input type="text" id="robot-google-voice-en" value="en-US-Neural2-F" placeholder="en-US-Neural2-F" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Edge Voice (VI)</label>
+                <input type="text" id="robot-edge-voice-vi" value="vi-VN-HoaiMyNeural" placeholder="vi-VN-HoaiMyNeural" />
+              </div>
+              <div class="field">
+                <label>Edge Voice (EN)</label>
+                <input type="text" id="robot-edge-voice-en" value="en-US-JennyNeural" placeholder="en-US-JennyNeural" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
                 <label>Voice Style</label>
                 <select id="robot-voice-style">
                   <option value="default">Default</option>
@@ -981,6 +1018,43 @@
         </div>
         <div class="form-row">
           <div class="field">
+            <label>TTS Provider</label>
+            <select id="edit-tts-provider">
+              <option value="google">Google Cloud TTS</option>
+              <option value="edge">Microsoft Edge TTS</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>TTS Language Mode</label>
+            <select id="edit-tts-language">
+              <option value="auto">Auto</option>
+              <option value="vi">Vietnamese</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Google Voice (VI)</label>
+            <input type="text" id="edit-google-voice-vi" value="vi-VN-Neural2-A" />
+          </div>
+          <div class="field">
+            <label>Google Voice (EN)</label>
+            <input type="text" id="edit-google-voice-en" value="en-US-Neural2-F" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Edge Voice (VI)</label>
+            <input type="text" id="edit-edge-voice-vi" value="vi-VN-HoaiMyNeural" />
+          </div>
+          <div class="field">
+            <label>Edge Voice (EN)</label>
+            <input type="text" id="edit-edge-voice-en" value="en-US-JennyNeural" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
             <label>Voice Style</label>
             <select id="edit-voice-style">
               <option value="default">Default</option>
@@ -1052,6 +1126,24 @@
     if (sec < 3600) return Math.floor(sec/60) + ' phút trước';
     if (sec < 86400) return Math.floor(sec/3600) + ' giờ trước';
     return Math.floor(sec/86400) + ' ngày trước';
+  }
+
+  function readTtsConfig(prefix) {
+    const provider = (document.getElementById(prefix + '-tts-provider')?.value || 'google').trim();
+    const language = (document.getElementById(prefix + '-tts-language')?.value || 'auto').trim();
+    const googleVoiceVi = (document.getElementById(prefix + '-google-voice-vi')?.value || 'vi-VN-Neural2-A').trim();
+    const googleVoiceEn = (document.getElementById(prefix + '-google-voice-en')?.value || 'en-US-Neural2-F').trim();
+    const edgeVoiceVi = (document.getElementById(prefix + '-edge-voice-vi')?.value || 'vi-VN-HoaiMyNeural').trim();
+    const edgeVoiceEn = (document.getElementById(prefix + '-edge-voice-en')?.value || 'en-US-JennyNeural').trim();
+
+    return {
+      provider: provider || 'google',
+      language: language || 'auto',
+      google_voice_vi: googleVoiceVi,
+      google_voice_en: googleVoiceEn,
+      edge_voice_vi: edgeVoiceVi,
+      edge_voice_en: edgeVoiceEn,
+    };
   }
 
   async function apiFetch(url, options) {
@@ -1223,14 +1315,37 @@
     const name    = document.getElementById('robot-name').value.trim();
     const mac     = document.getElementById('robot-mac').value.trim();
     const robotId = 'robot-' + mac.replace(/:/g,'').toLowerCase();
+    const systemPrompt = document.getElementById('robot-system-prompt').value;
+    const voiceStyle = document.getElementById('robot-voice-style').value;
+    const uiLanguage = document.getElementById('robot-language').value;
+    const ttsConfig = readTtsConfig('robot');
     try {
       const res = await apiFetch(API_ROBOTS, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mac_address: mac, robot_id: robotId, name: name || null }),
       });
       if (res.ok) {
+        const cfgRes = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/config', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_prompt: systemPrompt,
+            voice_config: { style: voiceStyle },
+            tts_config: ttsConfig,
+            stt_config: { language: uiLanguage },
+          }),
+        });
+        if (!cfgRes.ok) {
+          const err = await cfgRes.json().catch(()=>({}));
+          toast('✕', err.detail || 'Robot created nhưng update config thất bại', 'error');
+        }
         toast('✓', 'Robot created successfully!', 'success');
         document.getElementById('robot-form').reset();
+        document.getElementById('robot-tts-provider').value = 'google';
+        document.getElementById('robot-tts-language').value = 'auto';
+        document.getElementById('robot-google-voice-vi').value = 'vi-VN-Neural2-A';
+        document.getElementById('robot-google-voice-en').value = 'en-US-Neural2-F';
+        document.getElementById('robot-edge-voice-vi').value = 'vi-VN-HoaiMyNeural';
+        document.getElementById('robot-edge-voice-en').value = 'en-US-JennyNeural';
         switchTab('dashboard', document.querySelector('[data-tab=dashboard]'));
         await loadRobots();
       } else {
@@ -1251,8 +1366,33 @@
       if (res.ok) {
         const cfg = await res.json();
         document.getElementById('edit-system-prompt').value = cfg.system_prompt || '';
+        const ttsCfg = cfg.tts_config || {};
+        document.getElementById('edit-tts-provider').value = ttsCfg.provider || 'google';
+        document.getElementById('edit-tts-language').value = ttsCfg.language || 'auto';
+        document.getElementById('edit-google-voice-vi').value = ttsCfg.google_voice_vi || 'vi-VN-Neural2-A';
+        document.getElementById('edit-google-voice-en').value = ttsCfg.google_voice_en || 'en-US-Neural2-F';
+        document.getElementById('edit-edge-voice-vi').value = ttsCfg.edge_voice_vi || 'vi-VN-HoaiMyNeural';
+        document.getElementById('edit-edge-voice-en').value = ttsCfg.edge_voice_en || 'en-US-JennyNeural';
       } else { document.getElementById('edit-system-prompt').value = ''; }
     } catch(e) { document.getElementById('edit-system-prompt').value = ''; }
+    if (!document.getElementById('edit-tts-provider').value) {
+      document.getElementById('edit-tts-provider').value = 'google';
+    }
+    if (!document.getElementById('edit-tts-language').value) {
+      document.getElementById('edit-tts-language').value = 'auto';
+    }
+    if (!document.getElementById('edit-google-voice-vi').value) {
+      document.getElementById('edit-google-voice-vi').value = 'vi-VN-Neural2-A';
+    }
+    if (!document.getElementById('edit-google-voice-en').value) {
+      document.getElementById('edit-google-voice-en').value = 'en-US-Neural2-F';
+    }
+    if (!document.getElementById('edit-edge-voice-vi').value) {
+      document.getElementById('edit-edge-voice-vi').value = 'vi-VN-HoaiMyNeural';
+    }
+    if (!document.getElementById('edit-edge-voice-en').value) {
+      document.getElementById('edit-edge-voice-en').value = 'en-US-JennyNeural';
+    }
     document.getElementById('edit-voice-style').value = 'default';
     document.getElementById('edit-language').value    = 'vi';
     document.getElementById('modal-title').textContent = 'Edit — ' + (r.name || r.robot_id);
@@ -1267,6 +1407,9 @@
     const mac         = document.getElementById('edit-id').value;
     const name        = document.getElementById('edit-name').value.trim();
     const systemPrompt = document.getElementById('edit-system-prompt').value;
+    const voiceStyle = document.getElementById('edit-voice-style').value;
+    const uiLanguage = document.getElementById('edit-language').value;
+    const ttsConfig = readTtsConfig('edit');
     try {
       const res = await apiFetch(API_ROBOTS + encodeURIComponent(mac), {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1277,7 +1420,12 @@
     try {
       const res2 = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/config', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_prompt: systemPrompt }),
+        body: JSON.stringify({
+          system_prompt: systemPrompt,
+          voice_config: { style: voiceStyle },
+          tts_config: ttsConfig,
+          stt_config: { language: uiLanguage },
+        }),
       });
       if (res2.ok) { toast('✓', 'Changes saved!', 'success'); closeModal(); await loadRobots(); }
       else { const err = await res2.json().catch(()=>({})); toast('✕', err.detail || 'Update failed', 'error'); }

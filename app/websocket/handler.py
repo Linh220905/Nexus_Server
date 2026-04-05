@@ -501,6 +501,13 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
 
     # Get robot config to customize behavior
     robot_config = get_robot_config(session.device_id)
+
+    try:
+        session.pipeline._tts.apply_runtime_config(
+            robot_config.tts_config if robot_config else None,
+        )
+    except Exception as e:
+        logger.warning("[%s] Failed to apply robot TTS config: %s", session.device_id, e)
     
     session.is_speaking = True
     ws_open = True

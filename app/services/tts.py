@@ -26,6 +26,11 @@ from typing import AsyncGenerator
 
 import aiohttp
 
+try:
+    import edge_tts  # type: ignore
+except Exception:
+    edge_tts = None
+
 from app.audio.opus_codec import OpusEncoder
 from app.config import AudioOutputConfig, TTSConfig
 
@@ -156,6 +161,10 @@ class TTSService:
     """Convert text to Opus audio frames using Google Cloud TTS."""
 
     def __init__(self, tts_cfg: TTSConfig, audio_cfg: AudioOutputConfig):
+        self._provider = (getattr(tts_cfg, "provider", "google") or "google").strip().lower()
+        if self._provider not in {"google", "edge"}:
+            self._provider = "google"
+
         self._api_key = getattr(tts_cfg, "google_tts_api_key", "") or ""
 
         legacy_voice = getattr(tts_cfg, "google_tts_voice", "") or "vi-VN-Neural2-A"
@@ -168,6 +177,16 @@ class TTSService:
 
         self._language_code_vi = getattr(tts_cfg, "google_tts_language_vi", "") or legacy_lang or "vi-VN"
         self._language_code_en = getattr(tts_cfg, "google_tts_language_en", "") or "en-US"
+
+        self._edge_voice_vi = getattr(tts_cfg, "edge_tts_voice_vi", "") or "vi-VN-HoaiMyNeural"
+        self._edge_voice_en = getattr(tts_cfg, "edge_tts_voice_en", "") or "en-US-JennyNeural"
+        self._edge_rate_vi = getattr(tts_cfg, "edge_tts_rate_vi", "+0%") or "+0%"
+        self._edge_rate_en = getattr(tts_cfg, "edge_tts_rate_en", "+0%") or "+0%"
+        self._edge_pitch_vi = getattr(tts_cfg, "edge_tts_pitch_vi", "+0Hz") or "+0Hz"
+        self._edge_pitch_en = getattr(tts_cfg, "edge_tts_pitch_en", "+0Hz") or "+0Hz"
+
+        raw_default_lang = (getattr(tts_cfg, "language", "auto") or "auto").strip().lower()
+        self._default_language_hint: str | None = raw_default_lang if raw_default_lang in {"vi", "en"} else None
 
         self._speaking_rate_vi = float(
             getattr(tts_cfg, "speed_vi", legacy_speed if legacy_lang.startswith("vi") else 0.96) or 0.96
@@ -193,9 +212,27 @@ class TTSService:
 
         self._tts_url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={self._api_key}"
 
+        self._base_runtime = {
+            "provider": self._provider,
+            "voice_name_vi": self._voice_name_vi,
+            "voice_name_en": self._voice_name_en,
+            "language_code_vi": self._language_code_vi,
+            "language_code_en": self._language_code_en,
+            "voice_style": self._voice_style,
+            "default_language_hint": self._default_language_hint,
+            "edge_voice_vi": self._edge_voice_vi,
+            "edge_voice_en": self._edge_voice_en,
+            "edge_rate_vi": self._edge_rate_vi,
+            "edge_rate_en": self._edge_rate_en,
+            "edge_pitch_vi": self._edge_pitch_vi,
+            "edge_pitch_en": self._edge_pitch_en,
+        }
+
         logger.info(
-            "Google Cloud TTS initialized | vi=%s(%s rate=%.2f pitch=%.2f) "
-            "en=%s(%s rate=%.2f pitch=%.2f) profile=%s style=%s",
+            "TTS initialized | provider=%s | google vi=%s(%s rate=%.2f pitch=%.2f) "
+            "en=%s(%s rate=%.2f pitch=%.2f) | edge vi=%s(rate=%s pitch=%s) "
+            "en=%s(rate=%s pitch=%s) | profile=%s style=%s",
+            self._provider,
             self._voice_name_vi,
             self._language_code_vi,
             self._speaking_rate_vi,
@@ -204,9 +241,52 @@ class TTSService:
             self._language_code_en,
             self._speaking_rate_en,
             self._pitch_en,
+            self._edge_voice_vi,
+            self._edge_rate_vi,
+            self._edge_pitch_vi,
+            self._edge_voice_en,
+            self._edge_rate_en,
+            self._edge_pitch_en,
             self._audio_profile,
             self._voice_style,
         )
+
+    def apply_runtime_config(self, tts_config: dict | None = None) -> None:
+        """Apply per-robot TTS overrides from robot.config.tts_config."""
+        base = self._base_runtime
+        self._provider = base["provider"]
+        self._voice_name_vi = base["voice_name_vi"]
+        self._voice_name_en = base["voice_name_en"]
+        self._language_code_vi = base["language_code_vi"]
+        self._language_code_en = base["language_code_en"]
+        self._voice_style = base["voice_style"]
+        self._default_language_hint = base["default_language_hint"]
+        self._edge_voice_vi = base["edge_voice_vi"]
+        self._edge_voice_en = base["edge_voice_en"]
+        self._edge_rate_vi = base["edge_rate_vi"]
+        self._edge_rate_en = base["edge_rate_en"]
+        self._edge_pitch_vi = base["edge_pitch_vi"]
+        self._edge_pitch_en = base["edge_pitch_en"]
+
+        if not isinstance(tts_config, dict):
+            return
+
+        provider = (str(tts_config.get("provider", "")).strip().lower() or self._provider)
+        if provider in {"google", "edge"}:
+            self._provider = provider
+
+        self._voice_name_vi = str(tts_config.get("google_voice_vi") or self._voice_name_vi)
+        self._voice_name_en = str(tts_config.get("google_voice_en") or self._voice_name_en)
+        self._edge_voice_vi = str(tts_config.get("edge_voice_vi") or self._edge_voice_vi)
+        self._edge_voice_en = str(tts_config.get("edge_voice_en") or self._edge_voice_en)
+
+        self._edge_rate_vi = str(tts_config.get("edge_rate_vi") or self._edge_rate_vi)
+        self._edge_rate_en = str(tts_config.get("edge_rate_en") or self._edge_rate_en)
+        self._edge_pitch_vi = str(tts_config.get("edge_pitch_vi") or self._edge_pitch_vi)
+        self._edge_pitch_en = str(tts_config.get("edge_pitch_en") or self._edge_pitch_en)
+
+        forced_lang = (str(tts_config.get("language") or "").strip().lower())
+        self._default_language_hint = forced_lang if forced_lang in {"vi", "en"} else None
 
     @property
     def frame_duration_s(self) -> float:
@@ -233,16 +313,15 @@ class TTSService:
                 return
 
             normalized = self._normalize_text(clean_text)
-            chunks = self._prepare_chunks(normalized, language_hint=language_hint)
+            effective_lang_hint = language_hint or self._default_language_hint
+            chunks = self._prepare_chunks(normalized, language_hint=effective_lang_hint)
             if not chunks:
                 return
 
-            timeout = aiohttp.ClientTimeout(total=self._request_timeout_s)
-
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            if self._provider == "edge":
                 for chunk in chunks:
                     total_chunks += 1
-                    pcm_data = await self._synthesize_chunk(session, chunk)
+                    pcm_data = await self._synthesize_chunk_edge(chunk)
                     if not pcm_data:
                         continue
 
@@ -263,6 +342,33 @@ class TTSService:
                         if first_frame_at is None:
                             first_frame_at = time.perf_counter()
                         yield self._encoder.encode(bytes(pcm_buffer))
+            else:
+                timeout = aiohttp.ClientTimeout(total=self._request_timeout_s)
+
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    for chunk in chunks:
+                        total_chunks += 1
+                        pcm_data = await self._synthesize_chunk(session, chunk)
+                        if not pcm_data:
+                            continue
+
+                        total_pcm_bytes += len(pcm_data)
+                        pcm_buffer = bytearray(pcm_data)
+
+                        while len(pcm_buffer) >= self._frame_bytes:
+                            frame_data = bytes(pcm_buffer[: self._frame_bytes])
+                            del pcm_buffer[: self._frame_bytes]
+                            total_frames += 1
+                            if first_frame_at is None:
+                                first_frame_at = time.perf_counter()
+                            yield self._encoder.encode(frame_data)
+
+                        if pcm_buffer:
+                            pcm_buffer.extend(b"\x00" * (self._frame_bytes - len(pcm_buffer)))
+                            total_frames += 1
+                            if first_frame_at is None:
+                                first_frame_at = time.perf_counter()
+                            yield self._encoder.encode(bytes(pcm_buffer))
 
             elapsed = time.perf_counter() - started_at
             first_frame_ms = (
@@ -282,15 +388,94 @@ class TTSService:
                 elapsed,
                 audio_seconds,
                 rtf,
-                self._voice_name_vi,
-                self._voice_name_en,
+                self._edge_voice_vi if self._provider == "edge" else self._voice_name_vi,
+                self._edge_voice_en if self._provider == "edge" else self._voice_name_en,
                 self._voice_style,
             )
 
         except asyncio.TimeoutError:
             logger.error("Google TTS API timeout (%.1fs)", self._request_timeout_s)
         except Exception as e:
-            logger.error("Google TTS error: %s", e, exc_info=True)
+            logger.error("TTS error: %s", e, exc_info=True)
+
+    async def _synthesize_chunk_edge(self, chunk: dict[str, str]) -> bytes | None:
+        if edge_tts is None:
+            logger.error("edge-tts is not installed. Run: pip install edge-tts")
+            return None
+
+        text = chunk["text"]
+        lang = chunk["lang"]
+        if not text.strip():
+            return None
+
+        if lang == "en":
+            voice_name = self._edge_voice_en
+            rate = self._edge_rate_en
+            pitch = self._edge_pitch_en
+        else:
+            voice_name = self._edge_voice_vi
+            rate = self._edge_rate_vi
+            pitch = self._edge_pitch_vi
+
+        try:
+            communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=rate, pitch=pitch)
+            audio_chunks: list[bytes] = []
+            async for event in communicate.stream():
+                if event.get("type") == "audio":
+                    data = event.get("data")
+                    if isinstance(data, (bytes, bytearray)):
+                        audio_chunks.append(bytes(data))
+
+            if not audio_chunks:
+                logger.error("Edge TTS returned empty audio stream")
+                return None
+
+            audio_bytes = b"".join(audio_chunks)
+            pcm_data = await self._decode_audio_bytes_with_ffmpeg(audio_bytes, input_format="mp3")
+            if not pcm_data:
+                logger.error("Failed to decode Edge TTS audio stream")
+                return None
+            return pcm_data
+        except Exception as e:
+            logger.error("Edge TTS synthesis error: %s", e, exc_info=True)
+            return None
+
+    async def _decode_audio_bytes_with_ffmpeg(self, audio_bytes: bytes, *, input_format: str) -> bytes | None:
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            logger.warning("ffmpeg not found, cannot decode %s TTS audio", input_format)
+            return None
+
+        process = await asyncio.create_subprocess_exec(
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            input_format,
+            "-i",
+            "pipe:0",
+            "-f",
+            "s16le",
+            "-ac",
+            "1",
+            "-ar",
+            str(self._target_rate),
+            "pipe:1",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        out, err = await process.communicate(input=audio_bytes)
+        if process.returncode != 0:
+            logger.warning(
+                "ffmpeg decode failed (%s): %s",
+                process.returncode,
+                (err or b"").decode("utf-8", errors="ignore"),
+            )
+            return None
+        return out
 
     def _strip_emotion_tags(self, text: str) -> str:
         cleaned = EMOTION_TAG_RE.sub("", text or "")
