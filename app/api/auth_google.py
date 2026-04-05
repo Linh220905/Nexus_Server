@@ -89,7 +89,7 @@ async def google_auth(request: Request):
         status_code=302
     )
 
-    set_auth_cookie(response, session_token)
+    set_auth_cookie(response, session_token, request)
 
     # Xóa session_backend cookie sau khi OAuth hoàn tất
     # Tránh cookie cũ (secure/samesite khác) gây xung đột

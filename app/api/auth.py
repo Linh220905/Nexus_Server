@@ -103,6 +103,6 @@ async def login(
     })
 
 
-    set_auth_cookie(response, session_token)
+    set_auth_cookie(response, session_token, request)
 
     return response
