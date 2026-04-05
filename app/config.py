@@ -42,6 +42,7 @@ class AudioOutputConfig(BaseModel):
     sample_rate: int = 24000
     channels: int = 1
     frame_duration_ms: int = 60
+    opus_bitrate: int = int(os.environ.get("AUDIO_OUTPUT_OPUS_BITRATE", "48000"))
 
     @property
     def frame_size(self) -> int:
@@ -147,8 +148,20 @@ class TTSConfig(BaseModel):
     speed: float = float(os.environ.get("TTS_SPEED", "1.0"))
     voice_style: str = os.environ.get("TTS_VOICE_STYLE", "normal")
     volume_gain_db: float = float(os.environ.get("TTS_VOLUME_GAIN_DB", "6.0"))
+    post_gain_db: float = float(os.environ.get("TTS_POST_GAIN_DB", "8.0"))
+    target_rms: float = float(os.environ.get("TTS_TARGET_RMS", "9500"))
+    max_peak: int = int(os.environ.get("TTS_MAX_PEAK", "30000"))
+    max_boost_db: float = float(os.environ.get("TTS_MAX_BOOST_DB", "18.0"))
+    compressor_threshold: float = float(os.environ.get("TTS_COMPRESSOR_THRESHOLD", "0.70"))
+    compressor_ratio: float = float(os.environ.get("TTS_COMPRESSOR_RATIO", "3.0"))
+    post_makeup_db: float = float(os.environ.get("TTS_POST_MAKEUP_DB", "10.0"))
+    softclip_drive: float = float(os.environ.get("TTS_SOFTCLIP_DRIVE", "1.6"))
+    enable_post_loudness: bool = os.environ.get("TTS_ENABLE_POST_LOUDNESS", "true").strip().lower() in {"1", "true", "yes", "on"}
+    log_audio_stats: bool = os.environ.get("TTS_LOG_AUDIO_STATS", "false").strip().lower() in {"1", "true", "yes", "on"}
 
     # === Piper TTS backup config (không dùng nữa, giữ lại để tham khảo) ===
+    audio_profile: str = os.environ.get("TTS_AUDIO_PROFILE", "small-bluetooth-speaker-class-device")
+
     # model_path: str = os.environ.get("TTS_MODEL_PATH", "models/vi_VN-vais1000-medium.onnx")
     # speaker_id: int | None = int(os.environ["TTS_SPEAKER_ID"]) if os.environ.get("TTS_SPEAKER_ID") else None
 

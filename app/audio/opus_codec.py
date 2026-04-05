@@ -34,8 +34,8 @@ class OpusEncoder:
             channels=cfg.channels,
             application=opuslib.APPLICATION_AUDIO,
         )
-        # Tăng bitrate để giảm rè (mặc định quá thấp cho TTS)
-        self._encoder.bitrate = 32000
+        # Bitrate cao hơn cho TTS 24kHz giúp giữ chi tiết và độ "dày" âm.
+        self._encoder.bitrate = max(16000, int(getattr(cfg, "opus_bitrate", 48000)))
         self._frame_size = cfg.frame_size
         self._frame_bytes = cfg.frame_size * 2  # 2 bytes per int16 sample
 

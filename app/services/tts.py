@@ -19,8 +19,10 @@ import asyncio
 import base64
 import html
 from app.server_logging import get_logger
+import math
 import re
 import shutil
+import struct
 import time
 from typing import AsyncGenerator
 
@@ -197,8 +199,18 @@ class TTSService:
         self._pitch_en = float(getattr(tts_cfg, "pitch_en", 0.0) or 0.0)
 
         self._volume_gain_db = float(getattr(tts_cfg, "volume_gain_db", 0.0) or 0.0)
-        self._audio_profile = getattr(tts_cfg, "audio_profile", None) or "headphone-class-device"
+        self._audio_profile = getattr(tts_cfg, "audio_profile", None) or "small-bluetooth-speaker-class-device"
         self._request_timeout_s = float(getattr(tts_cfg, "request_timeout_s", 30.0) or 30.0)
+        self._enable_post_loudness = bool(getattr(tts_cfg, "enable_post_loudness", True))
+        self._post_gain_db = float(getattr(tts_cfg, "post_gain_db", 8.0) or 0.0)
+        self._target_rms = float(getattr(tts_cfg, "target_rms", 9500.0) or 9500.0)
+        self._max_peak = int(getattr(tts_cfg, "max_peak", 30000) or 30000)
+        self._max_boost_db = float(getattr(tts_cfg, "max_boost_db", 18.0) or 18.0)
+        self._compressor_threshold = float(getattr(tts_cfg, "compressor_threshold", 0.70) or 0.70)
+        self._compressor_ratio = max(1.2, float(getattr(tts_cfg, "compressor_ratio", 3.0) or 3.0))
+        self._post_makeup_db = float(getattr(tts_cfg, "post_makeup_db", 10.0) or 10.0)
+        self._softclip_drive = max(1.0, float(getattr(tts_cfg, "softclip_drive", 1.6) or 1.6))
+        self._log_audio_stats = bool(getattr(tts_cfg, "log_audio_stats", False))
 
         self._voice_style = legacy_style
 
@@ -380,7 +392,7 @@ class TTSService:
 
             logger.info(
                 "TTS timing | chars=%d chunks=%d frames=%d first_frame=%.1fms total=%.3fs "
-                "audio=%.3fs rtf=%.2f vi_voice=%s en_voice=%s style=%s",
+                "audio=%.3fs rtf=%.2f vi_voice=%s en_voice=%s style=%s post_loudness=%s",
                 len(clean_text),
                 total_chunks,
                 total_frames,
@@ -391,6 +403,7 @@ class TTSService:
                 self._edge_voice_vi if self._provider == "edge" else self._voice_name_vi,
                 self._edge_voice_en if self._provider == "edge" else self._voice_name_en,
                 self._voice_style,
+                self._enable_post_loudness,
             )
 
         except asyncio.TimeoutError:
@@ -435,7 +448,7 @@ class TTSService:
             if not pcm_data:
                 logger.error("Failed to decode Edge TTS audio stream")
                 return None
-            return pcm_data
+            return self._apply_loudness_chain(pcm_data, lang=lang)
         except Exception as e:
             logger.error("Edge TTS synthesis error: %s", e, exc_info=True)
             return None
@@ -543,7 +556,89 @@ class TTSService:
             return None
 
         audio_content = base64.b64decode(audio_content_b64)
-        return self._strip_wav_header_if_needed(audio_content)
+        pcm = self._strip_wav_header_if_needed(audio_content)
+        return self._apply_loudness_chain(pcm, lang=lang)
+
+    def _apply_loudness_chain(self, pcm_data: bytes, *, lang: str) -> bytes:
+        if not pcm_data or not self._enable_post_loudness:
+            return pcm_data
+        if len(pcm_data) < 2:
+            return pcm_data
+
+        n_samples = len(pcm_data) // 2
+        samples = list(struct.unpack(f"<{n_samples}h", pcm_data[: n_samples * 2]))
+        if not samples:
+            return pcm_data
+
+        pre_rms = self._calc_rms(samples)
+        pre_peak = max(abs(s) for s in samples)
+        if pre_peak == 0:
+            return pcm_data
+
+        post_gain_linear = math.pow(10.0, self._post_gain_db / 20.0)
+        rms_gain = (self._target_rms / pre_rms) if pre_rms > 1.0 else post_gain_linear
+        max_boost_linear = math.pow(10.0, self._max_boost_db / 20.0)
+        total_gain = min(post_gain_linear * rms_gain, max_boost_linear)
+        total_gain = max(1.0, total_gain)
+
+        thr = int(max(2000.0, min(32000.0, self._compressor_threshold * 32767.0)))
+        ratio = self._compressor_ratio
+        out: list[int] = []
+        for s in samples:
+            v = float(s) * total_gain
+            sign = 1.0 if v >= 0 else -1.0
+            av = abs(v)
+
+            if av > thr:
+                av = thr + (av - thr) / ratio
+
+            # Soft clip nhẹ để tăng loudness cảm nhận, tránh méo cứng.
+            av = 32767.0 * math.tanh((av / 32767.0) * self._softclip_drive)
+            out.append(int(max(-self._max_peak, min(self._max_peak, sign * av))))
+
+        # Makeup gain sau compressor để đẩy loudness gần target RMS.
+        post_rms = self._calc_rms(out)
+        post_peak_before_makeup = max(abs(s) for s in out) if out else 0
+        if post_rms > 1.0 and post_peak_before_makeup > 0:
+            makeup_cap = math.pow(10.0, self._post_makeup_db / 20.0)
+            # Chừa headroom để không đẩy peak sát trần gây bể tiếng.
+            headroom_gain = (self._max_peak * 0.97) / float(post_peak_before_makeup)
+            makeup = min(self._target_rms / post_rms, makeup_cap, headroom_gain)
+            if makeup > 1.0:
+                out = [
+                    int(max(-self._max_peak, min(self._max_peak, s * makeup)))
+                    for s in out
+                ]
+
+        # Safety trim cuối: nếu peak vẫn cao, hạ đồng đều một chút để sạch tiếng.
+        post_peak = max(abs(s) for s in out) if out else 0
+        safe_peak = int(self._max_peak * 0.95)
+        if post_peak > safe_peak and post_peak > 0:
+            trim = safe_peak / float(post_peak)
+            out = [int(s * trim) for s in out]
+
+        post_rms = self._calc_rms(out)
+        post_peak = max(abs(s) for s in out)
+        if self._log_audio_stats:
+            logger.info(
+                "TTS loudness | lang=%s pre_rms=%.0f pre_peak=%d post_rms=%.0f post_peak=%d gain=%.2fx makeup_db=%.1f",
+                lang,
+                pre_rms,
+                pre_peak,
+                post_rms,
+                post_peak,
+                total_gain,
+                self._post_makeup_db,
+            )
+
+        return struct.pack(f"<{len(out)}h", *out)
+
+    @staticmethod
+    def _calc_rms(samples: list[int]) -> float:
+        if not samples:
+            return 0.0
+        mean = sum(samples) / len(samples)
+        return math.sqrt(sum((s - mean) * (s - mean) for s in samples) / len(samples))
 
     def _prepare_chunks(
         self,
