@@ -1,29 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nexus — Robot Management</title>
+  <title>Nexus — Robot Learning Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:        #f5f4f0;
+      --bg:        #f7f5f1;
       --bg2:       #ffffff;
       --bg3:       #faf9f6;
-      --surface:   rgba(255,255,255,0.95);
-      --border:    #e8e5de;
-      --border-hi: #d4cfc4;
+      --border:    #e8e4db;
+      --border-hi: #d0c9bc;
       --red:       #e8321a;
       --red-d:     #c92810;
       --red-soft:  rgba(232,50,26,0.08);
-      --red-mid:   rgba(232,50,26,0.15);
+      --red-mid:   rgba(232,50,26,0.16);
       --green:     #1a9e5c;
       --green-d:   rgba(26,158,92,0.1);
       --amber:     #d97706;
       --amber-d:   rgba(217,119,6,0.1);
       --blue:      #2563eb;
       --blue-d:    rgba(37,99,235,0.08);
+      --purple:    #7c3aed;
+      --purple-d:  rgba(124,58,237,0.08);
       --text:      #1a1814;
       --text-2:    #6b6558;
       --text-3:    #b0aa9e;
@@ -31,9 +32,7 @@
       --shadow-sm: 0 1px 4px rgba(26,24,20,0.07);
       --shadow-md: 0 4px 16px rgba(26,24,20,0.10);
       --shadow-lg: 0 12px 40px rgba(26,24,20,0.13);
-      --r:         14px;
-      --r-sm:      9px;
-      --r-xs:      6px;
+      --r: 14px; --r-sm: 9px; --r-xs: 6px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,624 +45,724 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ────── TEXTURE OVERLAY ────── */
     body::after {
       content: '';
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-      background-size: 200px;
-      opacity: 0.6;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      background-size: 200px; opacity: 0.5;
     }
 
-    /* ══════════════════════════════
-       LOGIN PAGE
-    ══════════════════════════════ */
-    #login-page {
-      position: relative; z-index: 10;
+    /* ══════════════════ LANDING PAGE ══════════════════ */
+    #landing-page { position: relative; z-index: 10; min-height: 100vh; }
+
+    /* NAV */
+    .land-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 3rem;
+      background: rgba(247,245,241,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .land-nav-logo {
+      display: flex; align-items: center; gap: .65rem;
+      font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 900;
+      color: var(--text); letter-spacing: -.02em; cursor: pointer;
+    }
+    .land-nav-logo .dot { color: var(--red); }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: var(--red);
+      display: grid; place-items: center; font-size: .9rem;
+      box-shadow: 0 2px 8px rgba(232,50,26,0.3);
+      color: white; flex-shrink: 0;
+    }
+    .land-nav-links { display: flex; align-items: center; gap: 2rem; }
+    .land-nav-links a {
+      font-size: .82rem; font-weight: 600; color: var(--text-2);
+      text-decoration: none; transition: color .15s; cursor: pointer;
+    }
+    .land-nav-links a:hover { color: var(--text); }
+    .land-nav-actions { display: flex; align-items: center; gap: .75rem; }
+
+    /* HERO */
+    .hero {
       min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 1.5rem;
-      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 8rem 2rem 5rem;
+      position: relative; overflow: hidden;
     }
-
-    .login-wrap {
-      display: flex; width: 100%; max-width: 900px; min-height: 540px;
-      border-radius: 24px; overflow: hidden;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.8) inset;
-      animation: fadeUp .5s cubic-bezier(.22,.68,0,1.2);
-    }
-
-    .login-visual {
-      flex: 1;
-      background: #1a1814;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 3.5rem 2.5rem; position: relative; overflow: hidden;
-    }
-
-    /* Subtle grid pattern */
-    .login-visual::before {
-      content: '';
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-      background-size: 32px 32px;
-    }
-
-    /* Red glow blob bottom */
-    .login-visual::after {
-      content: '';
-      position: absolute;
-      width: 320px; height: 320px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(232,50,26,0.22) 0%, transparent 70%);
-      bottom: -80px; left: 50%; transform: translateX(-50%);
+    .hero-blob {
+      position: absolute; width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,50,26,0.10) 0%, transparent 65%);
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
       pointer-events: none;
     }
-
-    .visual-robot-wrap {
-      position: relative; z-index: 1; margin-bottom: 2rem;
-      display: flex; align-items: center; justify-content: center;
+    .hero-chip {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .3rem .9rem; border-radius: 99px;
+      background: var(--red-soft); border: 1px solid rgba(232,50,26,0.2);
+      font-size: .7rem; font-weight: 700; color: var(--red);
+      letter-spacing: .08em; text-transform: uppercase;
+      margin-bottom: 1.75rem; position: relative; z-index: 1;
+      animation: fadeUp .5s ease both;
     }
-
-    /* Glowing platform ring */
-    .visual-robot-wrap::after {
-      content: '';
-      position: absolute;
-      bottom: -10px; left: 50%; transform: translateX(-50%);
-      width: 120px; height: 18px; border-radius: 50%;
-      background: radial-gradient(ellipse, rgba(232,50,26,0.45) 0%, transparent 70%);
-      filter: blur(6px);
+    .hero-chip::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--red); animation: pulse 2s ease infinite;
     }
-
-    .visual-avatar {
-      width: 130px; height: 130px; border-radius: 28px;
-      border: 1.5px solid rgba(255,255,255,0.1);
-      box-shadow:
-        0 0 0 8px rgba(232,50,26,0.06),
-        0 0 0 16px rgba(232,50,26,0.03),
-        0 20px 50px rgba(0,0,0,0.5);
-      background: rgba(255,255,255,0.06);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 3.5rem;
-      overflow: hidden; backdrop-filter: blur(10px);
-    }
-    .visual-avatar img {
-      width: 100%; height: 100%; object-fit: contain;
-      display: block; padding: 4px;
-    }
-
-    .login-visual h2 {
+    .hero h1 {
       font-family: 'Fraunces', serif;
-      font-size: 2rem; font-weight: 900; color: #fff;
-      text-align: center; margin-bottom: .5rem;
+      font-size: clamp(2.8rem, 6vw, 5rem); font-weight: 900;
+      color: var(--text); line-height: 1.05; letter-spacing: -.04em;
+      max-width: 800px; position: relative; z-index: 1;
+      animation: fadeUp .6s .08s ease both;
+    }
+    .hero h1 em { color: var(--red); font-style: italic; }
+    .hero-sub {
+      font-size: 1rem; color: var(--text-2); line-height: 1.75;
+      max-width: 520px; margin: 1.5rem auto 2.75rem;
+      font-weight: 500; position: relative; z-index: 1;
+      animation: fadeUp .6s .16s ease both;
+    }
+    .hero-actions {
+      display: flex; gap: .75rem; flex-wrap: wrap; justify-content: center;
+      position: relative; z-index: 1;
+      animation: fadeUp .6s .24s ease both;
+    }
+    .hero-scroll-hint {
+      position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+      font-size: .68rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase;
+      font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      animation: fadeUp .6s .5s ease both;
+    }
+    .scroll-arrow { animation: bounce 2s ease infinite; }
+
+    /* FEATURES */
+    .features-section { padding: 6rem 3rem; max-width: 1200px; margin: 0 auto; }
+    .section-eyebrow {
+      font-size: .67rem; font-weight: 800; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--red); margin-bottom: .75rem;
+    }
+    .section-heading {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(1.8rem, 3vw, 2.75rem); font-weight: 900;
+      color: var(--text); letter-spacing: -.035em; line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+    .section-sub { font-size: .9rem; color: var(--text-2); max-width: 480px; line-height: 1.75; font-weight: 500; }
+
+    .features-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+      margin-top: 3.5rem;
+    }
+    .feat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 1.75rem;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .feat-card:hover { border-color: var(--border-hi); transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+    .feat-icon-wrap {
+      width: 48px; height: 48px; border-radius: 13px;
+      display: grid; place-items: center; font-size: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+    .fi-red    { background: var(--red-soft); }
+    .fi-green  { background: var(--green-d); }
+    .fi-blue   { background: var(--blue-d); }
+    .fi-amber  { background: var(--amber-d); }
+    .fi-purple { background: var(--purple-d); }
+    .feat-card h3 {
+      font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700;
+      color: var(--text); letter-spacing: -.02em; margin-bottom: .5rem;
+    }
+    .feat-card p { font-size: .8rem; color: var(--text-2); line-height: 1.7; font-weight: 500; }
+
+    /* STATS BAND */
+    .stats-band {
+      background: #1a1814; padding: 4rem 3rem;
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; position: relative; overflow: hidden;
+    }
+    .stats-band::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+                        linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+      background-size: 40px 40px;
+    }
+    .stats-band-inner {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; flex-wrap: wrap; max-width: 900px; width: 100%;
+      position: relative; z-index: 1;
+    }
+    .stat-item {
+      text-align: center; padding: 1.5rem 3.5rem;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-item .num {
+      font-family: 'Fraunces', serif; font-size: 2.75rem; font-weight: 900;
+      color: #fff; line-height: 1; letter-spacing: -.04em;
+    }
+    .stat-item .num span { color: var(--red); }
+    .stat-item .lbl { font-size: .72rem; color: rgba(255,255,255,0.45); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-top: .5rem; }
+
+    /* HOW IT WORKS */
+    .how-section { padding: 6rem 3rem; max-width: 1200px; margin: 0 auto; }
+    .steps-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2rem; margin-top: 3.5rem; }
+    .step-card { position: relative; padding-left: 1.5rem; border-left: 2px solid var(--border); }
+    .step-card.active-step { border-left-color: var(--red); }
+    .step-num {
+      font-family: 'Fraunces', serif; font-size: 3.5rem; font-weight: 900;
+      color: var(--border); line-height: 1; margin-bottom: .75rem;
+      letter-spacing: -.05em;
+    }
+    .step-card.active-step .step-num { color: var(--red-soft); }
+    .step-card h3 { font-family: 'Fraunces', serif; font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: .5rem; letter-spacing: -.02em; }
+    .step-card p { font-size: .8rem; color: var(--text-2); line-height: 1.7; font-weight: 500; }
+
+    /* TOPICS PREVIEW — landing, with lock overlay */
+    .topics-section { padding: 5rem 3rem; background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .topics-inner { max-width: 1200px; margin: 0 auto; }
+    .topics-tabs { display: flex; gap: .5rem; margin-bottom: 2.5rem; }
+    .topic-tab {
+      padding: .5rem 1.1rem; border-radius: 99px;
+      font-size: .78rem; font-weight: 700; cursor: pointer;
+      border: 1.5px solid var(--border); color: var(--text-2);
+      background: var(--bg3); transition: all .15s;
+    }
+    .topic-tab.active { background: var(--red); color: #fff; border-color: var(--red); }
+    .topic-cards-row { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: .5rem; }
+    .topic-card-preview {
+      min-width: 180px; padding: 1.25rem; border-radius: var(--r);
+      border: 1.5px solid var(--border); background: var(--bg3);
+      cursor: pointer; transition: all .2s; flex-shrink: 0;
+      position: relative; overflow: hidden;
+    }
+    .topic-card-preview:hover { border-color: var(--red); background: var(--red-soft); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .topic-card-preview .t-icon { font-size: 1.75rem; margin-bottom: .65rem; }
+    .topic-card-preview .t-name { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+    .topic-card-preview .t-count { font-size: .68rem; color: var(--text-3); font-weight: 600; }
+    .topic-card-preview .t-lock {
+      position: absolute; top: .6rem; right: .6rem;
+      width: 22px; height: 22px; border-radius: 6px;
+      background: rgba(26,24,20,0.06); display: grid; place-items: center;
+      font-size: .7rem; color: var(--text-3);
+    }
+
+    /* LOGIN REQUIRED TOOLTIP */
+    .login-required-badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      font-size: .65rem; font-weight: 700; color: var(--text-3);
+      letter-spacing: .04em; text-transform: uppercase;
+      margin-top: .75rem; padding: .3rem .75rem;
+      border-radius: 99px; background: var(--bg);
+      border: 1px dashed var(--border-hi);
+    }
+
+    /* CTA */
+    .cta-section {
+      padding: 7rem 3rem; text-align: center;
+      background: #1a1814; position: relative; overflow: hidden;
+    }
+    .cta-section::after {
+      content: ''; position: absolute;
+      width: 500px; height: 500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,50,26,0.18) 0%, transparent 65%);
+      bottom: -150px; left: 50%; transform: translateX(-50%);
+    }
+    .cta-section h2 {
+      font-family: 'Fraunces', serif; font-size: clamp(2rem,4vw,3.5rem);
+      font-weight: 900; color: #fff; letter-spacing: -.04em; line-height: 1.1;
+      margin-bottom: 1rem; position: relative; z-index: 1;
+    }
+    .cta-section p { color: rgba(255,255,255,0.5); font-size: .9rem; line-height: 1.75; margin-bottom: 2.5rem; position: relative; z-index: 1; }
+    .cta-section .hero-actions { position: relative; z-index: 1; }
+
+    /* FOOTER */
+    .land-footer {
+      background: #1a1814; border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 2rem 3rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .land-footer p { font-size: .72rem; color: rgba(255,255,255,0.3); font-weight: 500; }
+
+    /* ══════════════════ LOGIN NOTIFY OVERLAY (mini) ══════════════════ */
+    #login-notify {
+      display: none; position: fixed; inset: 0; z-index: 150;
+      background: rgba(26,24,20,0.4); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    #login-notify.open { display: flex; animation: fadeIn .18s ease; }
+    .notify-box {
+      background: var(--bg2); border: 1px solid var(--border-hi);
+      border-radius: 20px; padding: 2.5rem 2rem; max-width: 400px; width: 100%;
+      text-align: center; box-shadow: var(--shadow-lg);
+      animation: slideUp .25s cubic-bezier(.22,.68,0,1.2);
+    }
+    .notify-box .nb-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .notify-box h3 { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 900; color: var(--text); margin-bottom: .5rem; letter-spacing: -.02em; }
+    .notify-box p { font-size: .82rem; color: var(--text-2); line-height: 1.7; margin-bottom: 1.5rem; }
+    .notify-box .nb-actions { display: flex; gap: .75rem; justify-content: center; }
+
+    /* ══════════════════ LOGIN OVERLAY ══════════════════ */
+    #login-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(26,24,20,0.55); backdrop-filter: blur(12px);
+      align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    #login-overlay.open { display: flex; animation: fadeIn .2s ease; }
+    .login-modal {
+      width: 100%; max-width: 860px;
+      display: flex; border-radius: 24px; overflow: hidden;
+      border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+      min-height: 520px;
+      animation: slideUp .28s cubic-bezier(.22,.68,0,1.2);
+    }
+    .login-visual {
+      flex: 1; background: #1a1814;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 3rem 2.5rem; position: relative; overflow: hidden;
+    }
+    .login-visual::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,.03)1px,transparent 1px),
+                        linear-gradient(90deg,rgba(255,255,255,.03)1px,transparent 1px);
+      background-size: 32px 32px;
+    }
+    .login-visual::after {
+      content: ''; position: absolute;
+      width: 300px; height: 300px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,50,26,0.2)0%, transparent 70%);
+      bottom: -80px; left: 50%; transform: translateX(-50%);
+    }
+    .visual-avatar {
+      width: 110px; height: 110px; border-radius: 24px;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      box-shadow: 0 0 0 8px rgba(232,50,26,0.06), 0 20px 50px rgba(0,0,0,0.5);
+      background: rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem; overflow: hidden; backdrop-filter: blur(10px);
+      margin-bottom: 1.75rem; position: relative; z-index: 1;
+    }
+    .visual-avatar img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+    .login-visual h2 {
+      font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 900;
+      color: #fff; text-align: center; margin-bottom: .4rem;
       position: relative; z-index: 1; letter-spacing: -.03em;
     }
-    .login-visual p {
-      font-size: .8rem; color: rgba(255,255,255,0.45);
-      text-align: center; line-height: 1.75;
-      position: relative; z-index: 1;
-    }
-    .login-badges {
-      display: flex; gap: .4rem; flex-wrap: wrap;
-      justify-content: center; margin-top: 2rem;
-      position: relative; z-index: 1;
-    }
-    .badge {
-      font-size: .64rem; padding: .28rem .65rem; border-radius: 99px;
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.55); letter-spacing: .05em; font-weight: 600;
-    }
+    .login-visual p { font-size: .78rem; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.75; position: relative; z-index: 1; }
+    .login-badges { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: center; margin-top: 1.75rem; position: relative; z-index: 1; }
+    .badge { font-size: .62rem; padding: .25rem .6rem; border-radius: 99px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); letter-spacing: .05em; font-weight: 600; }
 
     .login-form-wrap {
-      width: 370px; background: var(--bg2);
+      width: 360px; background: var(--bg2);
       display: flex; flex-direction: column; justify-content: center;
-      padding: 3.5rem 2.75rem;
+      padding: 3rem 2.5rem; position: relative;
     }
-    .login-logo-row {
-      display: flex; align-items: center; gap: .6rem; margin-bottom: 2.25rem;
+    .close-login-btn {
+      position: absolute; top: 1.25rem; right: 1.25rem;
+      width: 30px; height: 30px; border-radius: var(--r-xs);
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text-2); cursor: pointer;
+      display: grid; place-items: center; font-size: .9rem;
+      transition: all .15s;
     }
-    .login-logo-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: var(--red);
-    }
-    .login-logo-text {
-      font-family: 'Fraunces', serif;
-      font-size: 1rem; font-weight: 700; color: var(--text);
-      letter-spacing: -.01em;
-    }
+    .close-login-btn:hover { background: var(--border); }
+    .login-logo-row { display: flex; align-items: center; gap: .55rem; margin-bottom: 2rem; }
+    .login-logo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+    .login-logo-text { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); }
+    .login-form-wrap h3 { font-family: 'Fraunces', serif; font-size: 1.55rem; font-weight: 900; color: var(--text); margin-bottom: .25rem; letter-spacing: -.03em; }
+    .login-form-wrap > .sub { font-size: .78rem; color: var(--text-2); margin-bottom: 2rem; font-weight: 500; }
 
-    .login-form-wrap h3 {
-      font-family: 'Fraunces', serif;
-      font-size: 1.65rem; font-weight: 900; color: var(--text);
-      margin-bottom: .3rem; letter-spacing: -.03em;
-    }
-    .login-form-wrap > p {
-      font-size: .8rem; color: var(--text-2); margin-bottom: 2.25rem;
-      font-weight: 500;
-    }
-
-    /* ────── FIELDS ────── */
-    .field { margin-bottom: 1.2rem; }
-    .field label {
-      display: block; font-size: .72rem;
-      letter-spacing: .06em; text-transform: uppercase;
-      color: var(--text-2); margin-bottom: .5rem; font-weight: 700;
-    }
+    /* ══════════════════ SHARED COMPONENTS ══════════════════ */
+    .field { margin-bottom: 1.15rem; }
+    .field label { display: block; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); margin-bottom: .45rem; font-weight: 700; }
     .field input, .field textarea, .field select {
-      width: 100%;
-      background: var(--bg3);
-      border: 1.5px solid var(--border);
-      border-radius: var(--r-sm);
-      padding: .78rem 1rem; color: var(--text);
-      font-family: 'Manrope', sans-serif; font-size: .88rem;
-      outline: none;
+      width: 100%; background: var(--bg3); border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); padding: .75rem 1rem; color: var(--text);
+      font-family: 'Manrope', sans-serif; font-size: .87rem; outline: none;
       transition: border-color .18s, box-shadow .18s, background .18s;
-      -webkit-appearance: none;
-      font-weight: 500;
+      -webkit-appearance: none; appearance: none; font-weight: 500;
     }
     .field input:focus, .field textarea:focus, .field select:focus {
-      border-color: var(--red); 
-      box-shadow: 0 0 0 3px var(--red-soft);
-      background: #fff;
+      border-color: var(--red); box-shadow: 0 0 0 3px var(--red-soft); background: #fff;
     }
     .field input::placeholder { color: var(--text-3); }
-    .field textarea { resize: vertical; min-height: 82px; line-height: 1.6; }
+    .field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
     .field select { cursor: pointer; }
     .field select option { background: #fff; color: var(--text); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
-    /* ────── DIVIDER ────── */
-    .or-divider {
-      display: flex; align-items: center; gap: .75rem; margin: 1.5rem 0;
-    }
-    .or-divider::before, .or-divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
-    .or-divider span { font-size: .73rem; color: var(--text-3); font-weight: 600; letter-spacing: .06em; }
+    .or-divider { display: flex; align-items: center; gap: .75rem; margin: 1.25rem 0; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .or-divider span { font-size: .7rem; color: var(--text-3); font-weight: 600; letter-spacing: .06em; }
 
-    /* ────── BUTTONS ────── */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-      padding: .78rem 1.5rem; border: none; border-radius: var(--r-sm);
-      font-family: 'Manrope', sans-serif; font-size: .85rem; font-weight: 700;
+      padding: .75rem 1.5rem; border: none; border-radius: var(--r-sm);
+      font-family: 'Manrope', sans-serif; font-size: .84rem; font-weight: 700;
       cursor: pointer; transition: all .18s cubic-bezier(.22,.68,0,1.2);
-      letter-spacing: .01em; position: relative; overflow: hidden;
-      text-decoration: none;
+      letter-spacing: .01em; position: relative; overflow: hidden; text-decoration: none;
     }
-    .btn::after {
-      content: ''; position: absolute; inset: 0;
-      background: rgba(255,255,255,0); transition: background .15s;
-    }
+    .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0); transition: background .15s; }
     .btn:hover::after { background: rgba(255,255,255,0.08); }
     .btn:active { transform: scale(0.97); }
-
-    .btn-primary {
-      background: var(--red); color: #fff;
-      box-shadow: 0 2px 8px rgba(232,50,26,0.35), 0 1px 2px rgba(232,50,26,0.2);
-    }
-    .btn-primary:hover {
-      background: var(--red-d);
-      box-shadow: 0 4px 16px rgba(232,50,26,0.45), 0 2px 4px rgba(232,50,26,0.25);
-      transform: translateY(-1px);
-    }
+    .btn-primary { background: var(--red); color: #fff; box-shadow: 0 2px 8px rgba(232,50,26,0.35); }
+    .btn-primary:hover { background: var(--red-d); box-shadow: 0 4px 16px rgba(232,50,26,0.45); transform: translateY(-1px); }
     .btn-primary:active { transform: translateY(0) scale(0.98); }
-
-    .btn-ghost {
-      background: var(--bg3); color: var(--text);
-      border: 1.5px solid var(--border);
-    }
-    .btn-ghost:hover {
-      background: var(--bg2); border-color: var(--border-hi);
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-google {
-      background: var(--bg2); color: var(--text);
-      border: 1.5px solid var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-google:hover {
-      background: var(--bg3); border-color: var(--border-hi);
-      box-shadow: var(--shadow-md);
-    }
+    .btn-outline { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+    .btn-outline:hover { background: var(--bg2); border-color: var(--border-hi); box-shadow: var(--shadow-sm); }
+    .btn-outline-white { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.2); }
+    .btn-outline-white:hover { background: rgba(255,255,255,0.08); }
+    .btn-ghost { background: var(--bg3); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg2); border-color: var(--border-hi); box-shadow: var(--shadow-sm); }
+    .btn-google { background: var(--bg2); color: var(--text); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
+    .btn-google:hover { background: var(--bg3); border-color: var(--border-hi); }
     .btn-danger { background: var(--red-soft); color: var(--red); border: 1.5px solid rgba(232,50,26,0.18); }
-    .btn-danger:hover { background: var(--red-mid); box-shadow: 0 2px 8px rgba(232,50,26,0.1); }
+    .btn-danger:hover { background: var(--red-mid); }
     .btn-success { background: var(--green-d); color: var(--green); border: 1.5px solid rgba(26,158,92,0.2); }
-    .btn-sm { padding: .44rem .9rem; font-size: .78rem; border-radius: var(--r-xs); }
+    .btn-sm { padding: .42rem .88rem; font-size: .76rem; border-radius: var(--r-xs); }
     .btn-full { width: 100%; }
-    .btn-icon {
-      width: 34px; height: 34px; padding: 0; border-radius: var(--r-xs);
-      font-size: 1rem; flex-shrink: 0;
-    }
+    .btn-icon { width: 34px; height: 34px; padding: 0; border-radius: var(--r-xs); font-size: 1rem; flex-shrink: 0; }
 
-    /* ══════════════════════════════
-       APP SHELL
-    ══════════════════════════════ */
+    /* ══════════════════ APP SHELL ══════════════════ */
     #app { display: none; position: relative; z-index: 10; min-height: 100vh; }
 
     .sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
-      background: var(--bg2);
-      border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; z-index: 100;
-      box-shadow: var(--shadow-sm);
+      position: fixed; top: 0; left: 0; bottom: 0; width: 248px;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; box-shadow: var(--shadow-sm);
     }
-
     .sb-brand {
-      padding: 1.5rem 1.5rem 1.25rem;
-      border-bottom: 1px solid var(--border);
+      padding: 1.4rem 1.5rem 1.2rem; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; gap: .75rem;
     }
     .sb-logo-box {
       width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-      overflow: hidden;
-      background: var(--red);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-      box-shadow: 0 2px 8px rgba(232,50,26,0.3);
+      overflow: hidden; background: var(--red);
+      display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+      box-shadow: 0 2px 8px rgba(232,50,26,0.3); cursor: pointer;
     }
     .sb-logo-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .sb-brand-text h1 {
-      font-family: 'Fraunces', serif;
-      font-size: 1.1rem; font-weight: 900; color: var(--text); line-height: 1.1;
-      letter-spacing: -.02em;
-    }
+    .sb-brand-text { cursor: pointer; }
+    .sb-brand-text h1 { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 900; color: var(--text); line-height: 1.1; letter-spacing: -.02em; }
     .sb-brand-text h1 span { color: var(--red); }
-    .sb-brand-text p { font-size: .6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-top: 1px; }
+    .sb-brand-text p { font-size: .58rem; color: var(--text-3); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-top: 1px; }
 
-    .nav-section-label {
-      font-size: .6rem; text-transform: uppercase; letter-spacing: .14em;
-      color: var(--text-3); font-weight: 800;
-      padding: 1.25rem 1.5rem .5rem;
-    }
+    .nav-section-label { font-size: .58rem; text-transform: uppercase; letter-spacing: .14em; color: var(--text-3); font-weight: 800; padding: 1.25rem 1.5rem .45rem; }
     .nav-item {
       display: flex; align-items: center; gap: .65rem;
-      padding: .62rem 1.5rem; font-size: .82rem; color: var(--text-2);
+      padding: .6rem 1.5rem; font-size: .81rem; color: var(--text-2);
       cursor: pointer; border-left: 2.5px solid transparent;
-      transition: all .15s; user-select: none; font-weight: 600;
-      margin: 1px 0;
+      transition: all .15s; user-select: none; font-weight: 600; margin: 1px 0;
     }
     .nav-item:hover { color: var(--text); background: var(--bg3); }
     .nav-item.active { color: var(--red); border-left-color: var(--red); background: var(--red-soft); }
-    .nav-icon { width: 20px; text-align: center; font-size: .88rem; opacity: .85; }
+    .nav-icon { width: 20px; text-align: center; font-size: .86rem; opacity: .85; }
+
+    /* Nav badge count */
+    .nav-badge { margin-left: auto; font-size: .58rem; padding: .15rem .5rem; border-radius: 99px; background: var(--red-soft); color: var(--red); font-weight: 800; border: 1px solid rgba(232,50,26,0.15); }
 
     .sb-footer {
-      margin-top: auto; padding: 1.25rem 1.5rem;
-      border-top: 1px solid var(--border);
-      background: var(--bg3);
+      margin-top: auto; padding: 1.2rem 1.5rem;
+      border-top: 1px solid var(--border); background: var(--bg3);
     }
-    .user-row {
-      display: flex; align-items: center; gap: .75rem; margin-bottom: .9rem;
-    }
+    .user-row { display: flex; align-items: center; gap: .7rem; margin-bottom: .85rem; }
     .user-av {
       width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-      background: var(--red);
-      display: grid; place-items: center;
+      background: var(--red); display: grid; place-items: center;
       font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 900; color: #fff;
       box-shadow: 0 2px 6px rgba(232,50,26,0.3);
     }
-    .user-info .name {
-      font-size: .82rem; font-weight: 700; color: var(--text);
-      display: flex; align-items: center; gap: .4rem;
-    }
-    .user-info .role { font-size: .65rem; color: var(--text-3); font-weight: 600; margin-top: 1px; }
-    .role-badge {
-      font-size: .56rem; padding: .14rem .45rem; border-radius: 99px;
-      font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-    }
+    .user-info .name { font-size: .82rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: .4rem; }
+    .user-info .role { font-size: .63rem; color: var(--text-3); font-weight: 600; margin-top: 1px; }
+    .role-badge { font-size: .55rem; padding: .13rem .42rem; border-radius: 99px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .role-badge.admin  { background: var(--red-soft); color: var(--red); border: 1px solid rgba(232,50,26,0.2); }
     .role-badge.viewer { background: var(--blue-d); color: var(--blue); border: 1px solid rgba(37,99,235,0.2); }
 
     body.role-viewer .admin-only { display: none !important; }
     body.role-admin .viewer-only { display: none !important; }
 
-    /* ────── MAIN ────── */
-    .main { margin-left: 240px; padding: 2.5rem 2.75rem 4rem; min-height: 100vh; }
+    .main { margin-left: 248px; padding: 2.5rem 2.75rem 4rem; min-height: 100vh; }
 
-    .topbar {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      margin-bottom: 2rem;
+    /* BREADCRUMB */
+    .breadcrumb {
+      display: flex; align-items: center; gap: .4rem;
+      font-size: .7rem; color: var(--text-3); font-weight: 600;
+      margin-bottom: 1.5rem; letter-spacing: .02em;
     }
-    .page-title {
-      font-family: 'Fraunces', serif;
-      font-size: 1.6rem; font-weight: 900; color: var(--text);
-      letter-spacing: -.03em; line-height: 1.1;
-    }
-    .page-sub { font-size: .78rem; color: var(--text-2); margin-top: .4rem; font-weight: 500; }
+    .breadcrumb a { color: var(--text-3); cursor: pointer; text-decoration: none; transition: color .15s; }
+    .breadcrumb a:hover { color: var(--red); }
+    .breadcrumb .bc-sep { opacity: .4; }
+    .breadcrumb .bc-current { color: var(--text-2); }
+
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; }
+    .page-title { font-family: 'Fraunces', serif; font-size: 1.55rem; font-weight: 900; color: var(--text); letter-spacing: -.03em; line-height: 1.1; }
+    .page-sub { font-size: .76rem; color: var(--text-2); margin-top: .35rem; font-weight: 500; }
     .topbar-actions { display: flex; gap: .6rem; align-items: center; }
 
-    /* ────── STATS ────── */
-    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 2rem; }
     .stat-card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 1.35rem 1.5rem;
-      box-shadow: var(--shadow-sm);
-      display: flex; align-items: center; gap: 1.1rem;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+      padding: 1.3rem 1.4rem; box-shadow: var(--shadow-sm);
+      display: flex; align-items: center; gap: 1rem;
       transition: box-shadow .2s, transform .2s;
     }
     .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .stat-icon {
-      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-      display: grid; place-items: center; font-size: 1.15rem;
-    }
-    .si-red   { background: var(--red-soft); }
+    .stat-icon { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; font-size: 1.1rem; }
+    .si-red { background: var(--red-soft); }
     .si-green { background: var(--green-d); }
     .si-amber { background: var(--amber-d); }
-    .stat-label { font-size: .67rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); margin-bottom: .22rem; font-weight: 700; }
-    .stat-value { font-family: 'Fraunces', serif; font-size: 1.75rem; font-weight: 900; color: var(--text); line-height: 1; letter-spacing: -.03em; }
+    .si-blue { background: var(--blue-d); }
+    .si-purple { background: var(--purple-d); }
+    .stat-label { font-size: .64rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); margin-bottom: .2rem; font-weight: 700; }
+    .stat-value { font-family: 'Fraunces', serif; font-size: 1.7rem; font-weight: 900; color: var(--text); line-height: 1; letter-spacing: -.03em; }
 
-    /* ────── SECTION BAR ────── */
-    .section-bar {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem;
-    }
-    .section-title { font-size: .9rem; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
-    .count-pill {
-      font-size: .67rem; color: var(--text-2); font-weight: 700;
-      background: var(--bg3); border: 1px solid var(--border);
-      padding: .22rem .65rem; border-radius: 99px;
-    }
+    .section-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.15rem; }
+    .section-title { font-size: .88rem; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
+    .count-pill { font-size: .65rem; color: var(--text-2); font-weight: 700; background: var(--bg3); border: 1px solid var(--border); padding: .2rem .6rem; border-radius: 99px; }
 
-    /* ────── ROBOT CARDS ────── */
-    .robots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(295px, 1fr)); gap: 1.1rem; }
-
+    /* ROBOT CARDS */
+    .robots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(285px,1fr)); gap: 1.1rem; }
     .robot-card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--r); overflow: hidden;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
       transition: border-color .2s, transform .2s, box-shadow .2s;
-      animation: fadeUp .4s cubic-bezier(.22,.68,0,1.2) both;
-      box-shadow: var(--shadow-sm);
+      animation: fadeUp .4s cubic-bezier(.22,.68,0,1.2) both; box-shadow: var(--shadow-sm);
     }
-    .robot-card:hover {
-      border-color: var(--border-hi); transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
-    }
-
+    .robot-card:hover { border-color: var(--border-hi); transform: translateY(-4px); box-shadow: var(--shadow-lg); }
     .card-cover {
-      height: 100px;
-      background: linear-gradient(135deg, var(--bg3) 0%, #edeae0 100%);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
+      height: 95px; background: linear-gradient(135deg, var(--bg3) 0%, #edeae0 100%);
+      border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
       position: relative; overflow: hidden;
     }
-    .card-cover-pattern {
-      position: absolute; inset: 0;
-      background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
-      background-size: 20px 20px;
-      opacity: 0.5;
-    }
+    .card-cover-pattern { position: absolute; inset: 0; background-image: radial-gradient(circle, var(--border) 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; }
     .card-avatar {
-      width: 60px; height: 60px; border-radius: 15px; position: relative; z-index: 1;
-      border: 2px solid #fff;
-      box-shadow: 0 4px 16px rgba(26,24,20,0.12);
-      background: var(--red-soft);
-      display: flex; align-items: center; justify-content: center; font-size: 1.75rem;
-      overflow: hidden;
+      width: 58px; height: 58px; border-radius: 14px; position: relative; z-index: 1;
+      border: 2px solid #fff; box-shadow: 0 4px 16px rgba(26,24,20,0.12);
+      background: var(--red-soft); display: flex; align-items: center; justify-content: center; font-size: 1.65rem; overflow: hidden;
     }
     .card-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .card-status { position: absolute; top: .75rem; right: .75rem; z-index: 2; }
-    .status-chip {
-      display: inline-flex; align-items: center; gap: .35rem;
-      padding: .22rem .65rem; border-radius: 99px;
-      font-size: .65rem; font-weight: 700; letter-spacing: .04em;
-      border: 1px solid transparent;
-    }
+    .card-status { position: absolute; top: .7rem; right: .7rem; z-index: 2; }
+    .status-chip { display: inline-flex; align-items: center; gap: .32rem; padding: .2rem .6rem; border-radius: 99px; font-size: .63rem; font-weight: 700; letter-spacing: .04em; border: 1px solid transparent; }
     .status-online  { background: var(--green-d); color: var(--green); border-color: rgba(26,158,92,0.2); }
     .status-offline { background: var(--bg); color: var(--text-3); border-color: var(--border); }
     .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
     .status-online .status-dot { animation: pulse 2s ease infinite; box-shadow: 0 0 4px currentColor; }
+    .card-body { padding: 1.15rem 1.2rem; }
+    .card-name { font-family: 'Fraunces', serif; font-size: .97rem; font-weight: 700; color: var(--text); margin-bottom: .08rem; letter-spacing: -.02em; }
+    .card-mac { font-family: 'JetBrains Mono', monospace; font-size: .63rem; color: var(--text-3); letter-spacing: .06em; margin-bottom: .8rem; }
+    .card-info { display: grid; grid-template-columns: auto 1fr; gap: .18rem .65rem; font-size: .7rem; margin-bottom: .8rem; background: var(--bg3); border-radius: var(--r-xs); padding: .7rem; border: 1px solid var(--border); }
+    .card-info-label { color: var(--text-3); font-weight: 700; text-transform: uppercase; font-size: .58rem; letter-spacing: .06em; padding: .08rem 0; }
+    .card-info-val { color: var(--text-2); font-weight: 600; padding: .08rem 0; }
+    .card-actions { display: flex; gap: .45rem; padding-top: .85rem; border-top: 1px solid var(--border); }
 
-    .card-body { padding: 1.2rem 1.25rem; }
-    .card-name {
-      font-family: 'Fraunces', serif;
-      font-size: 1rem; font-weight: 700; color: var(--text);
-      margin-bottom: .1rem; letter-spacing: -.02em;
-    }
-    .card-mac {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: .65rem; color: var(--text-3); letter-spacing: .06em; margin-bottom: .85rem;
-    }
+    /* FORM CARD */
+    .form-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 2.25rem 2.25rem 2.75rem; max-width: 700px; box-shadow: var(--shadow-sm); }
+    .form-section { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 1.35rem; margin: 1.5rem 0; }
+    .form-section-title { font-size: .65rem; font-weight: 800; color: var(--red); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 1rem; display: flex; align-items: center; gap: .4rem; }
+    .form-section-title::before { content: ''; display: inline-block; width: 3px; height: 12px; background: var(--red); border-radius: 2px; }
 
-    .card-info {
-      display: grid; grid-template-columns: auto 1fr; gap: .2rem .7rem;
-      font-size: .72rem; margin-bottom: .85rem;
-      background: var(--bg3); border-radius: var(--r-xs);
-      padding: .75rem; border: 1px solid var(--border);
-    }
-    .card-info-label { color: var(--text-3); font-weight: 700; text-transform: uppercase; font-size: .6rem; letter-spacing: .06em; padding: .1rem 0; }
-    .card-info-val { color: var(--text-2); font-weight: 600; padding: .1rem 0; }
-
-    .card-actions {
-      display: flex; gap: .5rem;
-      padding-top: .9rem; border-top: 1px solid var(--border);
-    }
-
-    /* ────── FORM CARD ────── */
-    .form-card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 2.25rem 2.25rem 2.75rem;
-      max-width: 700px; box-shadow: var(--shadow-sm);
-    }
-    .form-section {
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 1.35rem; margin: 1.5rem 0;
-    }
-    .form-section-title {
-      font-size: .67rem; font-weight: 800;
-      color: var(--red); letter-spacing: .1em; text-transform: uppercase;
-      margin-bottom: 1.1rem; display: flex; align-items: center; gap: .4rem;
-    }
-    .form-section-title::before {
-      content: ''; display: inline-block;
-      width: 3px; height: 12px; background: var(--red); border-radius: 2px;
-    }
-
-    /* ────── MODAL ────── */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; z-index: 300;
-      background: rgba(26,24,20,0.45); backdrop-filter: blur(10px);
-      align-items: center; justify-content: center; padding: 1.5rem;
-    }
+    /* MODALS */
+    .modal-overlay { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(26,24,20,0.45); backdrop-filter: blur(10px); align-items: center; justify-content: center; padding: 1.5rem; }
     .modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
-    .modal-box {
-      width: 100%; max-width: 560px;
-      background: var(--bg2); border: 1px solid var(--border-hi);
-      border-radius: 20px; padding: 2rem;
-      box-shadow: var(--shadow-lg);
-      animation: slideUp .25s cubic-bezier(.22,.68,0,1.2);
-      max-height: 90vh; overflow-y: auto;
-    }
-    .modal-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.75rem;
-    }
-    .modal-header h2 {
-      font-family: 'Fraunces', serif;
-      font-size: 1.15rem; font-weight: 900; color: var(--text); letter-spacing: -.02em;
-    }
-    .close-btn {
-      width: 32px; height: 32px; border-radius: var(--r-xs);
-      background: var(--bg3); border: 1px solid var(--border);
-      color: var(--text-2); cursor: pointer;
-      display: grid; place-items: center; font-size: 1rem;
-      transition: all .15s; font-family: sans-serif;
-    }
+    .modal-box { width: 100%; max-width: 560px; background: var(--bg2); border: 1px solid var(--border-hi); border-radius: 20px; padding: 2rem; box-shadow: var(--shadow-lg); animation: slideUp .25s cubic-bezier(.22,.68,0,1.2); max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.75rem; }
+    .modal-header h2 { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 900; color: var(--text); letter-spacing: -.02em; }
+    .close-btn { width: 32px; height: 32px; border-radius: var(--r-xs); background: var(--bg3); border: 1px solid var(--border); color: var(--text-2); cursor: pointer; display: grid; place-items: center; font-size: 1rem; transition: all .15s; font-family: sans-serif; }
     .close-btn:hover { color: var(--text); background: var(--border); }
 
-    /* ────── TOAST ────── */
-    .toast {
-      position: fixed; bottom: 2rem; right: 2rem; z-index: 999;
-      background: var(--text); color: var(--text-inv);
-      border-radius: var(--r); padding: .9rem 1.35rem;
-      font-size: .8rem; font-weight: 600;
-      box-shadow: 0 8px 32px rgba(26,24,20,0.25);
-      display: flex; align-items: center; gap: .6rem;
-      opacity: 0; transform: translateY(12px);
-      transition: all .28s cubic-bezier(.22,.68,0,1.2);
-      pointer-events: none; max-width: 300px;
-    }
+    /* TOAST */
+    .toast { position: fixed; bottom: 2rem; right: 2rem; z-index: 999; background: var(--text); color: var(--text-inv); border-radius: var(--r); padding: .88rem 1.3rem; font-size: .79rem; font-weight: 600; box-shadow: 0 8px 32px rgba(26,24,20,0.25); display: flex; align-items: center; gap: .6rem; opacity: 0; transform: translateY(12px); transition: all .28s cubic-bezier(.22,.68,0,1.2); pointer-events: none; max-width: 300px; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .toast.success { background: var(--green); }
     .toast.error   { background: var(--red); }
 
-    /* ────── SPINNER ────── */
-    .spinner {
-      width: 15px; height: 15px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff; border-radius: 50%;
-      animation: spin .65s linear infinite; display: inline-block; flex-shrink: 0;
-    }
-    .spinner-dark {
-      border-color: rgba(26,24,20,0.15);
-      border-top-color: var(--text);
-    }
+    /* SPINNER */
+    .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; flex-shrink: 0; }
+    .spinner-dark { border-color: rgba(26,24,20,0.15); border-top-color: var(--text); }
 
-    /* ────── EMPTY STATE ────── */
-    .empty-state {
-      text-align: center; padding: 5rem 2rem;
-      border: 2px dashed var(--border); border-radius: var(--r);
-      background: var(--bg2);
-    }
-    .empty-state .ei { font-size: 2.75rem; margin-bottom: 1.1rem; opacity: .3; }
-    .empty-state h3 { font-family: 'Fraunces', serif; font-size: 1rem; color: var(--text-2); margin-bottom: .5rem; font-weight: 700; letter-spacing: -.02em; }
-    .empty-state p { font-size: .78rem; color: var(--text-3); font-weight: 500; }
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 5rem 2rem; border: 2px dashed var(--border); border-radius: var(--r); background: var(--bg2); }
+    .empty-state .ei { font-size: 2.65rem; margin-bottom: 1rem; opacity: .3; }
+    .empty-state h3 { font-family: 'Fraunces', serif; font-size: 1rem; color: var(--text-2); margin-bottom: .45rem; font-weight: 700; letter-spacing: -.02em; }
+    .empty-state p { font-size: .76rem; color: var(--text-3); font-weight: 500; }
 
-    /* ────── TABS ────── */
+    /* TABS */
     .tab-view { display: none; }
     .tab-view.active { display: block; animation: fadeUp .3s cubic-bezier(.22,.68,0,1.2); }
 
-    /* ────── INPUT FILE ────── */
-    input[type="file"] {
-      width: 100%; padding: .6rem .85rem;
-      background: var(--bg3); border: 2px dashed var(--border);
-      border-radius: var(--r-sm); color: var(--text-2);
-      font-family: 'Manrope', sans-serif; font-size: .82rem; font-weight: 500;
-      cursor: pointer; transition: border-color .18s;
-    }
+    input[type="file"] { width: 100%; padding: .6rem .85rem; background: var(--bg3); border: 2px dashed var(--border); border-radius: var(--r-sm); color: var(--text-2); font-family: 'Manrope', sans-serif; font-size: .82rem; font-weight: 500; cursor: pointer; transition: border-color .18s; }
     input[type="file"]:hover { border-color: var(--red); }
 
-    /* ────── CHAT HISTORY ────── */
-    .chat-session-card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--r); margin-bottom: 1.2rem;
-      box-shadow: var(--shadow-sm); overflow: hidden;
-      animation: fadeUp .4s cubic-bezier(.22,.68,0,1.2) both;
-    }
-    .chat-session-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 1.25rem; cursor: pointer;
-      background: var(--bg3); border-bottom: 1px solid var(--border);
-      transition: background .15s;
-    }
+    /* CHAT */
+    .chat-session-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 1.2rem; box-shadow: var(--shadow-sm); overflow: hidden; animation: fadeUp .4s cubic-bezier(.22,.68,0,1.2) both; }
+    .chat-session-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; cursor: pointer; background: var(--bg3); border-bottom: 1px solid var(--border); transition: background .15s; }
     .chat-session-header:hover { background: var(--border); }
-    .chat-session-header .robot-label {
-      display: flex; align-items: center; gap: .65rem;
-      font-weight: 700; font-size: .88rem; color: var(--text);
-    }
-    .chat-session-header .robot-label .robot-icon {
-      width: 32px; height: 32px; border-radius: 8px; background: var(--red-soft);
-      display: grid; place-items: center; font-size: 1rem; flex-shrink: 0;
-    }
-    .chat-session-header .session-meta {
-      font-size: .68rem; color: var(--text-3); font-weight: 600;
-      display: flex; align-items: center; gap: .75rem;
-    }
-    .chat-session-header .toggle-icon {
-      transition: transform .2s; font-size: .75rem; color: var(--text-3);
-    }
+    .chat-session-header .robot-label { display: flex; align-items: center; gap: .65rem; font-weight: 700; font-size: .88rem; color: var(--text); }
+    .chat-session-header .robot-label .robot-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--red-soft); display: grid; place-items: center; font-size: 1rem; flex-shrink: 0; }
+    .chat-session-header .session-meta { font-size: .66rem; color: var(--text-3); font-weight: 600; display: flex; align-items: center; gap: .75rem; }
+    .chat-session-header .toggle-icon { transition: transform .2s; font-size: .75rem; color: var(--text-3); }
     .chat-session-card.open .toggle-icon { transform: rotate(180deg); }
-    .chat-messages {
-      display: none; padding: 1rem 1.25rem;
-      max-height: 450px; overflow-y: auto;
-    }
+    .chat-messages { display: none; padding: 1rem 1.25rem; max-height: 450px; overflow-y: auto; }
     .chat-session-card.open .chat-messages { display: block; }
-    .chat-msg {
-      display: flex; gap: .65rem; margin-bottom: .85rem;
-      animation: fadeUp .2s ease both;
-    }
+    .chat-msg { display: flex; gap: .65rem; margin-bottom: .85rem; animation: fadeUp .2s ease both; }
     .chat-msg.user-msg { flex-direction: row-reverse; }
-    .chat-msg-avatar {
-      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
-      display: grid; place-items: center; font-size: .8rem;
-    }
+    .chat-msg-avatar { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; font-size: .8rem; }
     .chat-msg.user-msg .chat-msg-avatar { background: var(--blue-d); }
     .chat-msg.bot-msg .chat-msg-avatar { background: var(--red-soft); }
-    .chat-msg-bubble {
-      max-width: 75%; padding: .7rem 1rem; border-radius: 12px;
-      font-size: .82rem; line-height: 1.6; font-weight: 500;
-      word-break: break-word;
-    }
-    .chat-msg.user-msg .chat-msg-bubble {
-      background: var(--blue-d); color: var(--text);
-      border-bottom-right-radius: 4px;
-    }
-    .chat-msg.bot-msg .chat-msg-bubble {
-      background: var(--bg3); color: var(--text);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-    }
-    .chat-msg-time {
-      font-size: .6rem; color: var(--text-3); margin-top: .25rem;
-      font-weight: 600;
-    }
-    .chat-msg.user-msg .chat-msg-time { text-align: right; }
+    .chat-msg-bubble { max-width: 75%; padding: .7rem 1rem; border-radius: 12px; font-size: .82rem; line-height: 1.6; font-weight: 500; word-break: break-word; }
+    .chat-msg.user-msg .chat-msg-bubble { background: var(--blue-d); color: var(--text); border-bottom-right-radius: 4px; }
+    .chat-msg.bot-msg .chat-msg-bubble { background: var(--bg3); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 
-    /* ────── ANIMATIONS ────── */
+    /* ══════ VOCABULARY TAB ══════ */
+    .learn-tabs { display: flex; gap: .5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .learn-tab {
+      padding: .48rem 1.1rem; border-radius: 99px; font-size: .78rem; font-weight: 700;
+      cursor: pointer; border: 1.5px solid var(--border); color: var(--text-2);
+      background: var(--bg3); transition: all .15s;
+    }
+    .learn-tab.active { background: var(--red); color: #fff; border-color: var(--red); }
+
+    .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+    .topic-card {
+      background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--r);
+      padding: 1.5rem 1.25rem; cursor: pointer;
+      transition: border-color .2s, transform .2s, box-shadow .2s; box-shadow: var(--shadow-sm);
+      animation: fadeUp .35s cubic-bezier(.22,.68,0,1.2) both;
+      position: relative; overflow: hidden;
+    }
+    .topic-card::before { content: ''; position: absolute; inset: 0; background: var(--red-soft); opacity: 0; transition: opacity .2s; }
+    .topic-card:hover { border-color: var(--red); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .topic-card:hover::before { opacity: 1; }
+    .topic-card .tc-icon { font-size: 2rem; margin-bottom: .85rem; position: relative; z-index: 1; }
+    .topic-card .tc-name { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); letter-spacing: -.02em; margin-bottom: .3rem; position: relative; z-index: 1; }
+    .topic-card .tc-count { font-size: .7rem; color: var(--text-3); font-weight: 600; position: relative; z-index: 1; }
+    .topic-card .tc-level { position: absolute; top: .75rem; right: .75rem; font-size: .58rem; padding: .18rem .5rem; border-radius: 99px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; z-index: 1; }
+    .tc-level.beginner { background: var(--green-d); color: var(--green); }
+    .tc-level.intermediate { background: var(--amber-d); color: var(--amber); }
+    .tc-level.advanced { background: var(--red-soft); color: var(--red); }
+
+    /* VOCAB DETAIL */
+    #vocab-detail { display: none; }
+    .vocab-back-btn { display: flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--text-2); margin-bottom: 1.75rem; transition: color .15s; width: fit-content; }
+    .vocab-back-btn:hover { color: var(--red); }
+    .vocab-progress { margin-bottom: 2rem; }
+    .progress-bar-wrap { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
+    .progress-bar-fill { height: 100%; background: var(--red); border-radius: 99px; transition: width .4s ease; }
+    .progress-label { font-size: .7rem; color: var(--text-3); font-weight: 600; }
+
+    /* keyboard hint */
+    .keyboard-hint {
+      display: flex; align-items: center; gap: 1rem; justify-content: center;
+      margin-bottom: 1.25rem; flex-wrap: wrap;
+    }
+    .kbd-item { display: flex; align-items: center; gap: .4rem; font-size: .65rem; color: var(--text-3); font-weight: 600; }
+    .kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 5px; background: var(--bg3); border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .6rem; color: var(--text-2); box-shadow: 0 1px 0 var(--border); }
+
+    .flashcard-area { display: flex; align-items: center; justify-content: center; min-height: 320px; perspective: 1000px; margin-bottom: 2rem; }
+    .flashcard {
+      width: 100%; max-width: 520px; min-height: 260px; border-radius: 20px;
+      cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.22,.68,0,1.2);
+    }
+    .flashcard.flipped { transform: rotateY(180deg); }
+    .flashcard-front, .flashcard-back {
+      position: absolute; inset: 0; backface-visibility: hidden;
+      border-radius: 20px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 2.5rem;
+      text-align: center; border: 1.5px solid var(--border);
+    }
+    .flashcard-front { background: var(--bg2); box-shadow: var(--shadow-md); }
+    .flashcard-back { background: #1a1814; transform: rotateY(180deg); border-color: rgba(255,255,255,0.1); }
+    .fc-hint { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-3); margin-bottom: 1rem; font-weight: 700; }
+    .fc-image-wrap { width: 100%; max-width: 360px; margin: 0 auto .9rem; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg3); }
+    .fc-image { width: 100%; height: 150px; object-fit: cover; display: block; }
+    .fc-word { font-family: 'Fraunces', serif; font-size: 2.5rem; font-weight: 900; color: var(--text); letter-spacing: -.03em; margin-bottom: .5rem; }
+    .flashcard-back .fc-word { color: #fff; }
+    .fc-phonetic { font-size: .85rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-bottom: .75rem; }
+    .flashcard-back .fc-phonetic { color: rgba(255,255,255,0.4); }
+    .fc-type-badge { font-size: .65rem; padding: .22rem .65rem; border-radius: 99px; background: var(--red-soft); color: var(--red); font-weight: 700; border: 1px solid rgba(232,50,26,0.2); }
+    .flashcard-back .fc-type-badge { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.1); }
+    .fc-meaning { font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: .5rem; }
+    .fc-example { font-size: .8rem; color: rgba(255,255,255,0.45); line-height: 1.6; font-style: italic; }
+
+    .flashcard-controls { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+    .fc-nav-btn {
+      width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--bg2); color: var(--text-2); cursor: pointer; font-size: 1.1rem;
+      display: grid; place-items: center; transition: all .15s; box-shadow: var(--shadow-sm);
+    }
+    .fc-nav-btn:hover { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 4px 12px rgba(232,50,26,0.3); }
+    .fc-counter { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700; color: var(--text-2); min-width: 60px; text-align: center; }
+
+    /* ══════ CONVERSATION TAB ══════ */
+    .conv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .conv-card {
+      background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--r);
+      padding: 1.5rem; cursor: pointer;
+      transition: border-color .2s, transform .2s, box-shadow .2s; box-shadow: var(--shadow-sm);
+      animation: fadeUp .35s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    .conv-card:hover { border-color: var(--red); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .conv-card .cc-icon { font-size: 2rem; margin-bottom: .85rem; }
+    .conv-card .cc-title { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); letter-spacing: -.02em; margin-bottom: .35rem; }
+    .conv-card .cc-desc { font-size: .75rem; color: var(--text-2); line-height: 1.65; font-weight: 500; margin-bottom: 1rem; }
+    .conv-card .cc-meta { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .cc-tag { font-size: .6rem; padding: .18rem .55rem; border-radius: 99px; background: var(--bg3); border: 1px solid var(--border); color: var(--text-3); font-weight: 700; }
+
+    /* CONV DETAIL */
+    #conv-detail { display: none; }
+    .conv-script { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+    .conv-script-header { padding: 1rem 1.25rem; background: var(--bg3); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .conv-script-header h3 { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
+    .conv-script-body { padding: 1.25rem; }
+    .conv-line { display: flex; gap: .85rem; margin-bottom: 1.15rem; }
+    .conv-line:last-child { margin-bottom: 0; }
+    .conv-speaker { width: 60px; flex-shrink: 0; }
+    .conv-speaker-name { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: .25rem; }
+    .conv-speaker-av { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: .9rem; }
+    .sp-a { background: var(--red-soft); }
+    .sp-b { background: var(--blue-d); }
+    .conv-bubble { flex: 1; }
+    .conv-en { font-size: .87rem; font-weight: 600; color: var(--text); line-height: 1.55; margin-bottom: .22rem; }
+    .conv-vi { font-size: .78rem; color: var(--text-3); font-weight: 500; line-height: 1.5; font-style: italic; }
+    .conv-highlight { background: var(--red-soft); border-radius: 3px; padding: 0 2px; color: var(--red); font-weight: 700; }
+
+    .key-phrases { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+    .key-phrases h3 { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; letter-spacing: -.02em; }
+    .phrase-list { display: flex; flex-direction: column; gap: .65rem; }
+    .phrase-item { display: flex; gap: 1rem; align-items: flex-start; padding: .75rem; background: var(--bg3); border-radius: var(--r-sm); border: 1px solid var(--border); }
+    .phrase-item .pi-en { font-size: .83rem; font-weight: 700; color: var(--text); flex: 1; }
+    .phrase-item .pi-vi { font-size: .75rem; color: var(--text-2); font-weight: 500; }
+    .phrase-item .pi-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; margin-top: 5px; }
+
+    /* ANIMATIONS */
     @keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
     @keyframes slideUp  { from { opacity:0; transform:translateY(20px) scale(0.97); } to { opacity:1; transform:none; } }
     @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
     @keyframes spin     { to { transform: rotate(360deg); } }
     @keyframes pulse    { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+    @keyframes bounce   { 0%,100%{transform:translateY(0);} 50%{transform:translateY(6px);} }
 
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
 
-    /* ────── RESPONSIVE ────── */
-    @media (max-width: 750px) {
+    @media (max-width: 900px) {
+      .features-grid, .steps-grid { grid-template-columns: 1fr 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 700px) {
       .sidebar { display: none; }
       .main { margin-left: 0; padding: 1.5rem; }
+      .land-nav { padding: 1rem 1.5rem; }
+      .land-nav-links { display: none; }
+      .features-grid, .steps-grid { grid-template-columns: 1fr; }
       .login-visual { display: none; }
-      .login-wrap { max-width: 420px; }
+      .login-modal { max-width: 420px; }
       .login-form-wrap { width: 100%; }
       .stats-row { grid-template-columns: 1fr 1fr; }
       .form-row { grid-template-columns: 1fr; }
@@ -672,66 +771,249 @@
 </head>
 <body>
 
-<!-- ════ LOGIN ════ -->
-<div id="login-page">
-  <div class="login-wrap">
-    <div class="login-visual">
-      <div class="visual-robot-wrap">
-        <div class="visual-avatar" id="login-avatar">
-          <img src="" id="login-avatar-img" alt="Robot"
-            onerror="this.style.display='none'; document.getElementById('login-avatar-emoji').style.display='flex'; this.parentNode.style.background='rgba(232,50,26,0.12)'" />
-          <span id="login-avatar-emoji" style="display:none; align-items:center; justify-content:center; width:100%; height:100%;">🤖</span>
+<!-- ════════════ LANDING PAGE ════════════ -->
+<div id="landing-page">
+
+  <!-- NAV -->
+  <nav class="land-nav">
+    <div class="land-nav-logo">
+      <div class="logo-icon">🤖</div>
+      Nexus<span class="dot">.</span>
+    </div>
+    <div class="land-nav-links">
+      <a onclick="scrollTo('#features')">Tính năng</a>
+      <a onclick="scrollTo('#how')">Cách dùng</a>
+      <a onclick="scrollTo('#topics')">Chủ đề</a>
+    </div>
+    <div class="land-nav-actions">
+      <button class="btn btn-outline btn-sm" onclick="openLogin()">Đăng nhập</button>
+      <button class="btn btn-primary btn-sm" onclick="openLogin()">Bắt đầu ngay →</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-blob"></div>
+    <div class="hero-chip">🚀 Nền tảng học tiếng Anh cùng Robot AI</div>
+    <h1>Học tiếng Anh<br>cùng <em>Robot</em> thông minh</h1>
+    <p class="hero-sub">Nexus kết nối bạn với robot AI để luyện từ vựng, hội thoại và phản xạ ngôn ngữ — mọi lúc, mọi nơi.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary" onclick="openLogin()">Đăng nhập & Học ngay →</button>
+      <button class="btn btn-outline" onclick="scrollTo('#features')">Khám phá tính năng</button>
+    </div>
+    <div class="hero-scroll-hint">
+      <span>Cuộn xuống</span>
+      <span class="scroll-arrow">↓</span>
+    </div>
+  </section>
+
+  <!-- STATS BAND -->
+  <div class="stats-band">
+    <div class="stats-band-inner">
+      <div class="stat-item">
+        <div class="num">500<span>+</span></div>
+        <div class="lbl">Từ vựng TOEIC</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">20<span>+</span></div>
+        <div class="lbl">Chủ đề hội thoại</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">4</div>
+        <div class="lbl">Ngôn ngữ hỗ trợ</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">Real<span>-time</span></div>
+        <div class="lbl">Phản hồi tức thì</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features-section" id="features">
+    <div class="section-eyebrow">Tính năng nổi bật</div>
+    <h2 class="section-heading">Học thông minh hơn<br>với công nghệ AI</h2>
+    <p class="section-sub">Hệ thống kết hợp robot thực tế và AI để tạo trải nghiệm học ngôn ngữ chưa từng có.</p>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon-wrap fi-red">📚</div>
+        <h3>Từ vựng theo chủ đề</h3>
+        <p>Hơn 500 từ vựng được phân loại theo 15+ chủ đề thực tế: công việc, du lịch, ẩm thực, công nghệ và nhiều hơn nữa.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap fi-green">💬</div>
+        <h3>Hội thoại thực tế</h3>
+        <p>Học qua các đoạn hội thoại có cấu trúc theo từng tình huống: phỏng vấn, đặt phòng, mua sắm, gặp gỡ...</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap fi-blue">🤖</div>
+        <h3>Robot AI luyện nói</h3>
+        <p>Kết nối robot vật lý để luyện phát âm, nghe và phản xạ giao tiếp trong môi trường thực tế.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap fi-amber">🃏</div>
+        <h3>Flashcard thông minh</h3>
+        <p>Hệ thống flashcard với kỹ thuật spaced repetition giúp ghi nhớ từ vựng hiệu quả và lâu dài.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap fi-purple">🌐</div>
+        <h3>Đa ngôn ngữ</h3>
+        <p>Hỗ trợ Tiếng Anh, Tiếng Việt, Tiếng Nhật và Tiếng Trung với giọng đọc tự nhiên từ Google & Microsoft.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon-wrap fi-red">📊</div>
+        <h3>Theo dõi tiến độ</h3>
+        <p>Xem lại lịch sử hội thoại với robot, theo dõi số từ đã học và cải thiện từng ngày.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section" id="how" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border); max-width:100%; padding:6rem 0;">
+    <div style="max-width:1200px; margin:0 auto; padding:0 3rem;">
+      <div class="section-eyebrow">Cách hoạt động</div>
+      <h2 class="section-heading">3 bước để bắt đầu</h2>
+      <div class="steps-grid">
+        <div class="step-card active-step">
+          <div class="step-num">01</div>
+          <h3>Đăng nhập & Claim Robot</h3>
+          <p>Tạo tài khoản và nhập mã OTP do admin cấp để liên kết robot AI của bạn với hệ thống.</p>
+        </div>
+        <div class="step-card active-step">
+          <div class="step-num">02</div>
+          <h3>Chọn chủ đề học</h3>
+          <p>Chọn từ 15+ chủ đề từ vựng hoặc 20+ tình huống hội thoại phù hợp với mục tiêu của bạn.</p>
+        </div>
+        <div class="step-card active-step">
+          <div class="step-num">03</div>
+          <h3>Luyện tập cùng Robot</h3>
+          <p>Nói chuyện trực tiếp với robot, xem flashcard và ôn lại lịch sử học tập mọi lúc.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- TOPICS PREVIEW — with lock for unauthenticated -->
+  <section class="topics-section" id="topics">
+    <div class="topics-inner">
+      <div class="section-eyebrow">Nội dung học</div>
+      <h2 class="section-heading" style="margin-bottom:.5rem;">Phong phú chủ đề,<br>thực tế cuộc sống</h2>
+      <p class="section-sub" style="margin-bottom:.75rem;">Từ giao tiếp hàng ngày đến tiếng Anh chuyên ngành — tất cả trong một nền tảng.</p>
+      <div class="login-required-badge">🔒 Đăng nhập để truy cập đầy đủ nội dung</div>
+      <div style="margin-top:2rem;">
+        <div class="topics-tabs">
+          <div class="topic-tab active" onclick="switchPreviewTab('vocab',this)">📚 Từ vựng</div>
+          <div class="topic-tab" onclick="switchPreviewTab('conv',this)">💬 Hội thoại</div>
+        </div>
+        <div id="preview-vocab" class="topic-cards-row">
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">✈️</div><div class="t-name">Du lịch</div><div class="t-count">45 từ</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">💼</div><div class="t-name">Công việc</div><div class="t-count">60 từ</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🍜</div><div class="t-name">Ẩm thực</div><div class="t-count">38 từ</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🏥</div><div class="t-name">Y tế</div><div class="t-count">42 từ</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">💻</div><div class="t-name">Công nghệ</div><div class="t-count">55 từ</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🏫</div><div class="t-name">Giáo dục</div><div class="t-count">40 từ</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🌍</div><div class="t-name">Môi trường</div><div class="t-count">35 từ</div></div>
+        </div>
+        <div id="preview-conv" class="topic-cards-row" style="display:none">
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">👋</div><div class="t-name">Chào hỏi</div><div class="t-count">5 đoạn</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🛫</div><div class="t-name">Sân bay</div><div class="t-count">6 đoạn</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🏨</div><div class="t-name">Khách sạn</div><div class="t-count">4 đoạn</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🍽️</div><div class="t-name">Nhà hàng</div><div class="t-count">5 đoạn</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">💼</div><div class="t-name">Phỏng vấn</div><div class="t-count">7 đoạn</div></div>
+          <div class="topic-card-preview" onclick="requireLogin()"><div class="t-lock">🔒</div><div class="t-icon">🛒</div><div class="t-name">Mua sắm</div><div class="t-count">4 đoạn</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Sẵn sàng học<br>cùng Robot chưa?</h2>
+    <p>Đăng nhập ngay và bắt đầu hành trình chinh phục tiếng Anh<br>với người bạn đồng hành AI thú vị nhất của bạn.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary" onclick="openLogin()">Đăng nhập ngay →</button>
+      <button class="btn btn-outline-white">Xem demo</button>
+    </div>
+  </section>
+
+  <footer class="land-footer">
+    <div style="display:flex;align-items:center;gap:.6rem;">
+      <div class="logo-icon" style="width:26px;height:26px;border-radius:6px;font-size:.7rem;">🤖</div>
+      <span style="font-family:'Fraunces',serif;font-size:.9rem;font-weight:700;color:rgba(255,255,255,0.6);">Nexus.</span>
+    </div>
+    <p>© 2025 Nexus Robot Learning Platform. Tất cả quyền được bảo lưu.</p>
+  </footer>
+</div>
+
+<!-- ════════════ LOGIN NOTIFY ════════════ -->
+<div id="login-notify">
+  <div class="notify-box">
+    <div class="nb-icon">🔒</div>
+    <h3>Yêu cầu đăng nhập</h3>
+    <p>Bạn cần đăng nhập để truy cập nội dung học từ vựng và hội thoại đầy đủ.</p>
+    <div class="nb-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeNotify()">Để sau</button>
+      <button class="btn btn-primary btn-sm" onclick="closeNotify();openLogin();">Đăng nhập ngay →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ LOGIN OVERLAY ════════════ -->
+<div id="login-overlay">
+  <div class="login-modal">
+    <div class="login-visual">
+      <div class="visual-avatar" id="login-avatar">
+        <img src="" id="login-avatar-img" alt="Robot"
+          onerror="this.style.display='none'; document.getElementById('login-avatar-emoji').style.display='flex'; this.parentNode.style.background='rgba(232,50,26,0.12)'" />
+        <span id="login-avatar-emoji" style="display:none; align-items:center; justify-content:center; width:100%; height:100%;">🤖</span>
+      </div>
       <h2>Nexus</h2>
-      <div style="width:32px; height:3px; background:var(--red); border-radius:99px; margin:.6rem auto .65rem; opacity:.8;"></div>
-      <p>Intelligent Robot Fleet<br>Management Platform</p>
+      <div style="width:28px;height:3px;background:var(--red);border-radius:99px;margin:.5rem auto .6rem;opacity:.8;"></div>
+      <p>Robot Learning Platform<br>Học tiếng Anh thông minh</p>
       <div class="login-badges">
-        <span class="badge">Multi-language</span>
-        <span class="badge">Voice Styles</span>
+        <span class="badge">Từ vựng</span>
+        <span class="badge">Hội thoại</span>
         <span class="badge">Real-time</span>
+        <span class="badge">Multi-lang</span>
       </div>
     </div>
     <div class="login-form-wrap">
+      <button class="close-login-btn" onclick="closeLogin()">✕</button>
       <div class="login-logo-row">
         <div class="login-logo-dot"></div>
         <span class="login-logo-text">Nexus</span>
       </div>
-      <h3>Welcome back</h3>
-      <p>Sign in to manage your robot fleet</p>
-
+      <h3>Chào mừng trở lại</h3>
+      <p class="sub">Đăng nhập để học cùng robot của bạn</p>
       <form onsubmit="handleLogin(event)">
         <div class="field">
-          <label>Username</label>
-          <input type="text" id="username" placeholder="Enter your username" required autocomplete="username" />
+          <label>Tên đăng nhập</label>
+          <input type="text" id="username" placeholder="Nhập tên đăng nhập" required autocomplete="username" />
         </div>
         <div class="field">
-          <label>Password</label>
+          <label>Mật khẩu</label>
           <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password" />
         </div>
-        <button type="submit" class="btn btn-primary btn-full" id="login-btn" style="margin-top:.5rem">
-          Sign In →
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn" style="margin-top:.25rem">
+          Đăng nhập →
         </button>
       </form>
-
-      <div class="or-divider"><span>OR</span></div>
-
+      <div class="or-divider"><span>HOẶC</span></div>
       <button onclick="window.location.href='/auth/google-login'" class="btn btn-google btn-full">
-        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" style="width:18px;height:18px;">
-        Continue with Google
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" style="width:17px;height:17px;">
+        Tiếp tục với Google
       </button>
     </div>
   </div>
 </div>
 
-
-<!-- ════ APP ════ -->
+<!-- ════════════ APP ════════════ -->
 <div id="app">
   <nav class="sidebar">
     <div class="sb-brand">
       <div class="sb-logo-box" id="sb-logo-box" style="cursor:pointer" onclick="window.location.href='/'">
-        <img src="" id="sb-logo-img" alt="" onerror="this.style.display='none'; document.getElementById('sb-logo-emoji').style.display='block'" />
-        <span id="sb-logo-emoji" style="display:none; font-size:1.1rem; color:#fff;">🤖</span>
+        <img src="" id="sb-logo-img" alt="" onerror="this.style.display='none';document.getElementById('sb-logo-emoji').style.display='block'" />
+        <span id="sb-logo-emoji" style="display:none;color:#fff;">🤖</span>
       </div>
       <div class="sb-brand-text" style="cursor:pointer" onclick="window.location.href='/'">
         <h1>Nexus<span>.</span></h1>
@@ -739,21 +1021,36 @@
       </div>
     </div>
 
-    <div class="nav-section-label">Navigation</div>
+    <div class="nav-section-label">Tổng quan</div>
     <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard',this)">
       <span class="nav-icon">⊞</span> Dashboard
     </div>
+
+    <div class="nav-section-label viewer-only">Học tập</div>
+    <div class="nav-item viewer-only" data-tab="vocabulary" onclick="switchTab('vocabulary',this)">
+      <span class="nav-icon">📚</span> Từ vựng
+      <span class="nav-badge">500+</span>
+    </div>
+    <div class="nav-item viewer-only" data-tab="conversation" onclick="switchTab('conversation',this)">
+      <span class="nav-icon">💬</span> Hội thoại
+      <span class="nav-badge">20+</span>
+    </div>
+    <div class="nav-item viewer-only" data-tab="chat-history" onclick="switchTab('chat-history',this);loadChatHistory();">
+      <span class="nav-icon">🕐</span> Lịch sử chat
+    </div>
+    <div class="nav-item viewer-only" data-tab="assignments" onclick="switchTab('assignments',this);loadAssignments();">
+      <span class="nav-icon">📝</span> Bài tập
+    </div>
+
+    <div class="nav-section-label">Quản lý</div>
     <div class="nav-item admin-only" data-tab="add-robot" onclick="switchTab('add-robot',this)">
-      <span class="nav-icon">＋</span> Add Robot
+      <span class="nav-icon">＋</span> Thêm Robot
     </div>
     <div class="nav-item admin-only" data-tab="firmware" onclick="switchTab('firmware',this)">
       <span class="nav-icon">⬆</span> Firmware
     </div>
     <div class="nav-item viewer-only" data-tab="claim-robot" onclick="switchTab('claim-robot',this)">
       <span class="nav-icon">🔑</span> Claim Robot
-    </div>
-    <div class="nav-item viewer-only" data-tab="chat-history" onclick="switchTab('chat-history',this); loadChatHistory();">
-      <span class="nav-icon">💬</span> Chat History
     </div>
 
     <div class="sb-footer">
@@ -764,8 +1061,8 @@
           <div class="role" id="sb-role-text">Administrator</div>
         </div>
       </div>
-      <button class="btn btn-ghost btn-full btn-sm" onclick="handleLogout()" style="font-size:.76rem;">
-        Sign Out
+      <button class="btn btn-ghost btn-full btn-sm" onclick="handleLogout()" style="font-size:.74rem;">
+        Đăng xuất
       </button>
     </div>
   </nav>
@@ -777,811 +1074,1043 @@
       <div class="topbar">
         <div>
           <div class="page-title">Dashboard</div>
-          <div class="page-sub">Overview of your robot fleet</div>
+          <div class="page-sub">Tổng quan hệ thống robot của bạn</div>
         </div>
         <div class="topbar-actions">
-          <button class="btn btn-primary btn-sm admin-only"
-            onclick="switchTab('add-robot', document.querySelector('[data-tab=add-robot]'))">
-            + Add Robot
-          </button>
+          <button class="btn btn-primary btn-sm admin-only" onclick="switchTab('add-robot',document.querySelector('[data-tab=add-robot]'))">+ Thêm Robot</button>
+          <button class="btn btn-ghost btn-sm viewer-only" onclick="switchTab('claim-robot',document.querySelector('[data-tab=claim-robot]'))">🔑 Claim Robot</button>
         </div>
       </div>
       <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon si-red">🤖</div>
-          <div>
-            <div class="stat-label">Total Units</div>
-            <div class="stat-value" id="stat-total">0</div>
-          </div>
+        <div class="stat-card"><div class="stat-icon si-red">🤖</div><div><div class="stat-label">Tổng Robot</div><div class="stat-value" id="stat-total">0</div></div></div>
+        <div class="stat-card"><div class="stat-icon si-green">⚡</div><div><div class="stat-label">Đang Online</div><div class="stat-value" id="stat-online">0</div></div></div>
+        <div class="stat-card viewer-only"><div class="stat-icon si-blue">📚</div><div><div class="stat-label">Chủ đề học</div><div class="stat-value">15+</div></div></div>
+        <div class="stat-card viewer-only"><div class="stat-icon si-purple">💬</div><div><div class="stat-label">Hội thoại</div><div class="stat-value">20+</div></div></div>
+        <div class="stat-card admin-only"><div class="stat-icon si-amber">🌐</div><div><div class="stat-label">Ngôn ngữ</div><div class="stat-value" id="stat-langs">0</div></div></div>
+      </div>
+
+      <!-- Quick access for viewers -->
+      <div class="viewer-only" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem;">
+        <div onclick="switchTab('vocabulary',document.querySelector('[data-tab=vocabulary]'))"
+          style="background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r);padding:1.5rem;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm);"
+          onmouseover="this.style.borderColor='var(--red)';this.style.transform='translateY(-3px)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.transform='none'">
+          <div style="font-size:1.75rem;margin-bottom:.65rem;">📚</div>
+          <div style="font-family:'Fraunces',serif;font-size:.95rem;font-weight:700;color:var(--text);letter-spacing:-.02em;margin-bottom:.3rem;">Học từ vựng</div>
+          <div style="font-size:.75rem;color:var(--text-2);font-weight:500;line-height:1.6;">15+ chủ đề, 500+ từ với flashcard thông minh</div>
+          <div style="margin-top:.85rem;font-size:.68rem;font-weight:700;color:var(--red);letter-spacing:.04em;">Bắt đầu học →</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon si-green">⚡</div>
-          <div>
-            <div class="stat-label">Online</div>
-            <div class="stat-value" id="stat-online">0</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon si-amber">🌐</div>
-          <div>
-            <div class="stat-label">Languages</div>
-            <div class="stat-value" id="stat-langs">0</div>
-          </div>
+        <div onclick="switchTab('conversation',document.querySelector('[data-tab=conversation]'))"
+          style="background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r);padding:1.5rem;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm);"
+          onmouseover="this.style.borderColor='var(--red)';this.style.transform='translateY(-3px)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.transform='none'">
+          <div style="font-size:1.75rem;margin-bottom:.65rem;">💬</div>
+          <div style="font-family:'Fraunces',serif;font-size:.95rem;font-weight:700;color:var(--text);letter-spacing:-.02em;margin-bottom:.3rem;">Luyện hội thoại</div>
+          <div style="font-size:.75rem;color:var(--text-2);font-weight:500;line-height:1.6;">20+ tình huống thực tế, mẫu câu kèm dịch</div>
+          <div style="margin-top:.85rem;font-size:.68rem;font-weight:700;color:var(--red);letter-spacing:.04em;">Luyện tập →</div>
         </div>
       </div>
+
       <div class="section-bar">
-        <span class="section-title">Registered Robots</span>
+        <span class="section-title">Robot đã đăng ký</span>
         <span class="count-pill" id="robot-count-badge">0 units</span>
       </div>
       <div id="robots-grid" class="robots-grid"></div>
     </div>
 
-    <!-- ── Add Robot ── -->
-    <div class="tab-view" id="tab-add-robot">
+    <!-- ── Vocabulary ── -->
+    <div class="tab-view" id="tab-vocabulary">
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current" id="vocab-breadcrumb">Từ vựng</span>
+      </div>
       <div class="topbar">
         <div>
-          <div class="page-title">Add Robot</div>
-          <div class="page-sub">Register a new unit to your fleet</div>
+          <div class="page-title">📚 Từ vựng</div>
+          <div class="page-sub">Học từ vựng theo chủ đề với flashcard thông minh</div>
         </div>
       </div>
+
+      <!-- Topic list -->
+      <div id="vocab-topics">
+        <div class="learn-tabs">
+          <div class="learn-tab active" onclick="filterVocab('all',this)">Tất cả</div>
+          <div class="learn-tab" onclick="filterVocab('beginner',this)">Cơ bản</div>
+          <div class="learn-tab" onclick="filterVocab('intermediate',this)">Trung cấp</div>
+          <div class="learn-tab" onclick="filterVocab('advanced',this)">Nâng cao</div>
+        </div>
+        <div class="topic-grid" id="vocab-topic-grid">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Flashcard detail -->
+      <div id="vocab-detail">
+        <div class="vocab-back-btn" onclick="showVocabTopics()">← Quay lại chủ đề</div>
+        <div class="topbar" style="margin-bottom:1.5rem;">
+          <div>
+            <div class="page-title" id="vocab-detail-title">Du lịch</div>
+            <div class="page-sub" id="vocab-detail-sub">45 từ • Cơ bản</div>
+          </div>
+        </div>
+        <div class="vocab-progress">
+          <div class="progress-label" id="vocab-progress-label">0 / 0 từ</div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="vocab-progress-bar" style="width:0%"></div></div>
+        </div>
+        <div class="keyboard-hint">
+          <div class="kbd-item"><span class="kbd">Space</span> lật thẻ</div>
+          <div class="kbd-item"><span class="kbd">←</span> từ trước</div>
+          <div class="kbd-item"><span class="kbd">→</span> từ tiếp</div>
+        </div>
+        <div class="flashcard-area">
+          <div class="flashcard" id="flashcard" onclick="flipCard()">
+            <div class="flashcard-front">
+              <div class="fc-hint">Nhấn để xem nghĩa</div>
+              <div class="fc-image-wrap" id="fc-image-wrap" style="display:none;">
+                <img class="fc-image" id="fc-image" alt="Flashcard" />
+              </div>
+              <div class="fc-word" id="fc-word">—</div>
+              <div class="fc-phonetic" id="fc-phonetic">/—/</div>
+              <div class="fc-type-badge" id="fc-type">noun</div>
+            </div>
+            <div class="flashcard-back">
+              <div class="fc-hint" style="color:rgba(255,255,255,0.3)">Nghĩa tiếng Việt</div>
+              <div class="fc-meaning" id="fc-meaning">—</div>
+              <div class="fc-phonetic" id="fc-phonetic-back">/—/</div>
+              <div class="fc-example" id="fc-example">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="flashcard-controls">
+          <button class="fc-nav-btn" onclick="prevCard()">←</button>
+          <div class="fc-counter" id="fc-counter">1 / 1</div>
+          <button class="fc-nav-btn" onclick="nextCard()">→</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Conversation ── -->
+    <div class="tab-view" id="tab-conversation">
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current" id="conv-breadcrumb">Hội thoại</span>
+      </div>
+      <div class="topbar">
+        <div>
+          <div class="page-title">💬 Hội thoại</div>
+          <div class="page-sub">Luyện hội thoại theo tình huống thực tế</div>
+        </div>
+      </div>
+
+      <!-- Conv topic list -->
+      <div id="conv-topics">
+        <div class="learn-tabs">
+          <div class="learn-tab active" onclick="filterConv('all',this)">Tất cả</div>
+          <div class="learn-tab" onclick="filterConv('daily',this)">Hàng ngày</div>
+          <div class="learn-tab" onclick="filterConv('travel',this)">Du lịch</div>
+          <div class="learn-tab" onclick="filterConv('work',this)">Công việc</div>
+        </div>
+        <div class="conv-grid" id="conv-topic-grid">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Conv detail -->
+      <div id="conv-detail">
+        <div class="vocab-back-btn" onclick="showConvTopics()">← Quay lại danh sách</div>
+        <div class="topbar" style="margin-bottom:1.5rem;">
+          <div>
+            <div class="page-title" id="conv-detail-title">Chào hỏi cơ bản</div>
+            <div class="page-sub" id="conv-detail-sub">Tình huống hàng ngày • Cơ bản</div>
+          </div>
+        </div>
+        <div class="conv-script" id="conv-script-box">
+          <div class="conv-script-header">
+            <h3 id="conv-script-title">Hội thoại mẫu</h3>
+            <span style="font-size:.68rem;color:var(--text-3);font-weight:600;">🎧 Nghe & Luyện tập</span>
+          </div>
+          <div class="conv-script-body" id="conv-script-body"></div>
+        </div>
+        <div class="key-phrases">
+          <h3>🔑 Cụm từ quan trọng</h3>
+          <div class="phrase-list" id="conv-phrase-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Add Robot ── -->
+    <div class="tab-view" id="tab-add-robot">
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current">Thêm Robot</span>
+      </div>
+      <div class="topbar"><div><div class="page-title">Thêm Robot</div><div class="page-sub">Đăng ký robot mới vào hệ thống</div></div></div>
       <div class="form-card">
         <form id="robot-form" onsubmit="handleCreateRobot(event)">
           <div class="form-row">
-            <div class="field">
-              <label>Robot Name</label>
-              <input type="text" id="robot-name" placeholder="e.g. Alpha-001" required />
-            </div>
-            <div class="field">
-              <label>MAC Address</label>
-              <input type="text" id="robot-mac" placeholder="AA:BB:CC:DD:EE:FF" required />
-            </div>
+            <div class="field"><label>Tên Robot</label><input type="text" id="robot-name" placeholder="VD: Alpha-001" required /></div>
+            <div class="field"><label>Địa chỉ MAC</label><input type="text" id="robot-mac" placeholder="AA:BB:CC:DD:EE:FF" required /></div>
           </div>
-          <div class="field">
-            <label>Description</label>
-            <textarea id="robot-description" rows="2" placeholder="Brief description of this unit..."></textarea>
-          </div>
+          <div class="field"><label>Mô tả</label><textarea id="robot-description" rows="2" placeholder="Mô tả ngắn về robot này..."></textarea></div>
           <div class="form-section">
-            <div class="form-section-title">Configuration</div>
-            <div class="field">
-              <label>System Prompt</label>
-              <textarea id="robot-system-prompt" rows="4" placeholder="You are a helpful assistant robot..."></textarea>
+            <div class="form-section-title">Cấu hình</div>
+            <div class="field"><label>System Prompt</label><textarea id="robot-system-prompt" rows="4" placeholder="You are a helpful assistant robot..."></textarea></div>
+            <div class="form-row">
+              <div class="field"><label>TTS Provider</label><select id="robot-tts-provider"><option value="google">Google Cloud TTS</option><option value="edge">Microsoft Edge TTS</option></select></div>
+              <div class="field"><label>Chế độ ngôn ngữ</label><select id="robot-tts-language"><option value="auto">Tự động</option><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option></select></div>
             </div>
             <div class="form-row">
-              <div class="field">
-                <label>TTS Provider</label>
-                <select id="robot-tts-provider">
-                  <option value="google">Google Cloud TTS</option>
-                  <option value="edge">Microsoft Edge TTS</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>TTS Language Mode</label>
-                <select id="robot-tts-language">
-                  <option value="auto">Auto</option>
-                  <option value="vi">Vietnamese</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
+              <div class="field"><label>Google Voice (VI)</label><input type="text" id="robot-google-voice-vi" value="vi-VN-Neural2-A" /></div>
+              <div class="field"><label>Google Voice (EN)</label><input type="text" id="robot-google-voice-en" value="en-US-Neural2-F" /></div>
             </div>
             <div class="form-row">
-              <div class="field">
-                <label>Google Voice (VI)</label>
-                <input type="text" id="robot-google-voice-vi" value="vi-VN-Neural2-A" placeholder="vi-VN-Neural2-A" />
-              </div>
-              <div class="field">
-                <label>Google Voice (EN)</label>
-                <input type="text" id="robot-google-voice-en" value="en-US-Neural2-F" placeholder="en-US-Neural2-F" />
-              </div>
+              <div class="field"><label>Edge Voice (VI)</label><input type="text" id="robot-edge-voice-vi" value="vi-VN-HoaiMyNeural" /></div>
+              <div class="field"><label>Edge Voice (EN)</label><input type="text" id="robot-edge-voice-en" value="en-US-JennyNeural" /></div>
             </div>
             <div class="form-row">
-              <div class="field">
-                <label>Edge Voice (VI)</label>
-                <input type="text" id="robot-edge-voice-vi" value="vi-VN-HoaiMyNeural" placeholder="vi-VN-HoaiMyNeural" />
-              </div>
-              <div class="field">
-                <label>Edge Voice (EN)</label>
-                <input type="text" id="robot-edge-voice-en" value="en-US-JennyNeural" placeholder="en-US-JennyNeural" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label>Voice Style</label>
-                <select id="robot-voice-style">
-                  <option value="default">Default</option>
-                  <option value="happy">Happy</option>
-                  <option value="sad">Sad</option>
-                  <option value="angry">Angry</option>
-                  <option value="calm">Calm</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Language</label>
-                <select id="robot-language">
-                  <option value="vi">Vietnamese</option>
-                  <option value="en">English</option>
-                  <option value="ja">Japanese</option>
-                  <option value="zh">Chinese</option>
-                </select>
-              </div>
+              <div class="field"><label>Phong cách giọng</label><select id="robot-voice-style"><option value="default">Mặc định</option><option value="happy">Vui vẻ</option><option value="calm">Bình tĩnh</option><option value="sad">Buồn</option><option value="angry">Nghiêm túc</option></select></div>
+              <div class="field"><label>Ngôn ngữ</label><select id="robot-language"><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option><option value="ja">Tiếng Nhật</option><option value="zh">Tiếng Trung</option></select></div>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary" id="create-btn">Create Robot →</button>
+          <button type="submit" class="btn btn-primary" id="create-btn">Tạo Robot →</button>
         </form>
       </div>
     </div>
 
-    <!-- ── Firmware (admin only) ── -->
+    <!-- ── Firmware ── -->
     <div class="tab-view" id="tab-firmware">
-      <div class="topbar">
-        <div>
-          <div class="page-title">Firmware Upload</div>
-          <div class="page-sub">Upload .bin file để cập nhật OTA cho robot</div>
-        </div>
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current">Firmware</span>
       </div>
+      <div class="topbar"><div><div class="page-title">Firmware Upload</div><div class="page-sub">Upload file .bin để cập nhật OTA cho robot</div></div></div>
       <div class="form-card" style="max-width:480px">
         <form id="firmware-form">
-          <div class="field">
-            <label>Firmware File (.bin)</label>
-            <input type="file" id="firmware-file" accept=".bin" required />
-          </div>
-          <div class="field">
-            <label>Version</label>
-            <input type="text" id="firmware-version" placeholder="e.g. 1.0.0" required />
-          </div>
-          <div class="field">
-            <label>Note <span style="color:var(--text-3); text-transform:none; font-size:.7rem;">(optional)</span></label>
-            <textarea id="firmware-note" rows="2" placeholder="Ghi chú cập nhật..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary btn-full" id="firmware-upload-btn">
-            ⬆ Upload Firmware
-          </button>
+          <div class="field"><label>Firmware File (.bin)</label><input type="file" id="firmware-file" accept=".bin" required /></div>
+          <div class="field"><label>Phiên bản</label><input type="text" id="firmware-version" placeholder="VD: 1.0.0" required /></div>
+          <div class="field"><label>Ghi chú <span style="color:var(--text-3);text-transform:none;font-size:.7rem;">(tùy chọn)</span></label><textarea id="firmware-note" rows="2" placeholder="Ghi chú cập nhật..."></textarea></div>
+          <button type="submit" class="btn btn-primary btn-full" id="firmware-upload-btn">⬆ Upload Firmware</button>
         </form>
-        <div id="firmware-upload-result" style="margin-top:1.2rem; display:none;"></div>
+        <div id="firmware-upload-result" style="margin-top:1.2rem;display:none;"></div>
       </div>
     </div>
 
-    <!-- ── Claim Robot (viewer only) ── -->
+    <!-- ── Claim Robot ── -->
     <div class="tab-view" id="tab-claim-robot">
-      <div class="topbar">
-        <div>
-          <div class="page-title">Claim Robot</div>
-          <div class="page-sub">Nhập mã OTP 6 số (được admin cấp) để thêm robot vào tài khoản của bạn</div>
-        </div>
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current">Claim Robot</span>
       </div>
+      <div class="topbar"><div><div class="page-title">Claim Robot</div><div class="page-sub">Nhập mã OTP 6 số để liên kết robot vào tài khoản của bạn</div></div></div>
       <div class="form-card" style="max-width:420px">
         <form id="claim-form" onsubmit="handleClaimRobot(event)">
           <div class="field">
-            <label>OTP Code</label>
-            <input type="text" id="claim-otp" placeholder="000000" required maxlength="6"
-              pattern="[0-9]{6}" inputmode="numeric"
-              style="font-family:'Fraunces',serif; font-size:2rem; font-weight:900;
-                     letter-spacing:.4em; text-align:center; padding:1rem;" />
-            <div style="font-size:.72rem; color:var(--text-3); margin-top:.4rem; font-weight:500;">
-              Mã OTP gồm 6 chữ số, có hiệu lực 10 phút.
-            </div>
+            <label>Mã OTP</label>
+            <input type="text" id="claim-otp" placeholder="000000" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+              style="font-family:'Fraunces',serif;font-size:2rem;font-weight:900;letter-spacing:.4em;text-align:center;padding:1rem;" />
+            <div style="font-size:.7rem;color:var(--text-3);margin-top:.4rem;font-weight:500;">Mã OTP gồm 6 chữ số, có hiệu lực 10 phút.</div>
           </div>
-          <button type="submit" class="btn btn-primary btn-full" id="claim-btn" style="margin-top:.5rem">
-            🔑 Claim Robot
-          </button>
+          <button type="submit" class="btn btn-primary btn-full" id="claim-btn" style="margin-top:.5rem">🔑 Claim Robot</button>
         </form>
-        <div id="claim-result" style="margin-top:1.2rem; display:none;"></div>
+        <div id="claim-result" style="margin-top:1.2rem;display:none;"></div>
       </div>
     </div>
 
-    <!-- ── Chat History (viewer only) ── -->
+    <!-- ── Chat History ── -->
     <div class="tab-view" id="tab-chat-history">
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current">Lịch sử Chat</span>
+      </div>
       <div class="topbar">
-        <div>
-          <div class="page-title">💬 Chat History</div>
-          <div class="page-sub">Xem lại lịch sử trò chuyện với các robot của bạn</div>
-        </div>
-        <div class="topbar-actions">
-          <button class="btn btn-ghost btn-sm" onclick="loadChatHistory()">🔄 Refresh</button>
-        </div>
+        <div><div class="page-title">🕐 Lịch sử Chat</div><div class="page-sub">Xem lại các cuộc trò chuyện với robot của bạn</div></div>
+        <div class="topbar-actions"><button class="btn btn-ghost btn-sm" onclick="loadChatHistory()">🔄 Làm mới</button></div>
+      </div>
+      <div id="chat-history-container">
+        <div class="empty-state"><div class="ei">💬</div><h3>Chưa có lịch sử trò chuyện</h3><p>Hãy bắt đầu nói chuyện với robot của bạn!</p></div>
+      </div>
+    </div>
+
+    <!-- ── Assignments ── -->
+    <div class="tab-view" id="tab-assignments">
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current">Bài tập</span>
+      </div>
+      <div class="topbar">
+        <div><div class="page-title">📝 Bài tập của con</div><div class="page-sub">Phụ huynh tự tạo/giao bài để robot hướng dẫn con học</div></div>
       </div>
 
-      <div id="chat-history-container">
-        <div class="empty-state">
-          <div class="ei">💬</div>
-          <h3>Chưa có lịch sử trò chuyện</h3>
-          <p>Hãy bắt đầu nói chuyện với robot của bạn!</p>
-        </div>
+      <div class="form-card" style="max-width:860px;margin-bottom:1.5rem;">
+        <form id="assignment-form" onsubmit="handleSaveAssignment(event)">
+          <input type="hidden" id="assignment-id" />
+          <div class="form-row">
+            <div class="field"><label>Tiêu đề bài tập</label><input type="text" id="assignment-title" placeholder="VD: Ôn 5 từ vựng chủ đề du lịch" required /></div>
+            <div class="field"><label>Hạn nộp (tuỳ chọn)</label><input type="datetime-local" id="assignment-due" /></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Chủ đề</label><input type="text" id="assignment-category" placeholder="VD: Từ vựng / Hội thoại / Ngữ pháp" /></div>
+            <div class="field"><label>Mức độ</label>
+              <select id="assignment-difficulty">
+                <option value="beginner">Cơ bản</option>
+                <option value="intermediate">Trung cấp</option>
+                <option value="advanced">Nâng cao</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label>Yêu cầu chi tiết</label><textarea id="assignment-instructions" rows="4" placeholder="Viết rõ yêu cầu để robot đọc cho bé, ví dụ: Con đọc to từng từ 2 lần rồi đặt câu đơn giản." required></textarea></div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary" id="assignment-save-btn">Lưu bài tập</button>
+            <button type="button" class="btn btn-ghost" onclick="resetAssignmentForm()">Làm mới</button>
+          </div>
+        </form>
       </div>
+
+      <div class="section-bar">
+        <span class="section-title">Danh sách bài tập đã giao</span>
+        <span class="count-pill" id="assignment-count">0 bài</span>
+      </div>
+      <div id="assignment-list"></div>
     </div>
 
   </main>
 </div>
 
-
 <!-- ════ EDIT MODAL ════ -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal-box">
     <div class="modal-header">
-      <h2 id="modal-title">Edit Robot</h2>
+      <h2 id="modal-title">Chỉnh sửa Robot</h2>
       <button class="close-btn" onclick="closeModal()">✕</button>
     </div>
     <form id="edit-form" onsubmit="handleUpdateRobot(event)">
       <input type="hidden" id="edit-id" />
-      <div class="field">
-        <label>Robot Name</label>
-        <input type="text" id="edit-name" required />
-      </div>
-      <div class="field">
-        <label>Description</label>
-        <textarea id="edit-description" rows="2"></textarea>
-      </div>
+      <div class="field"><label>Tên Robot</label><input type="text" id="edit-name" required /></div>
+      <div class="field"><label>Mô tả</label><textarea id="edit-description" rows="2"></textarea></div>
       <div class="form-section">
-        <div class="form-section-title">Configuration</div>
-        <div class="field">
-          <label>System Prompt</label>
-          <textarea id="edit-system-prompt" rows="4"></textarea>
+        <div class="form-section-title">Cấu hình</div>
+        <div class="field"><label>System Prompt</label><textarea id="edit-system-prompt" rows="4"></textarea></div>
+        <div class="form-row">
+          <div class="field"><label>TTS Provider</label><select id="edit-tts-provider"><option value="google">Google Cloud TTS</option><option value="edge">Microsoft Edge TTS</option></select></div>
+          <div class="field"><label>Ngôn ngữ TTS</label><select id="edit-tts-language"><option value="auto">Tự động</option><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option></select></div>
         </div>
         <div class="form-row">
-          <div class="field">
-            <label>TTS Provider</label>
-            <select id="edit-tts-provider">
-              <option value="google">Google Cloud TTS</option>
-              <option value="edge">Microsoft Edge TTS</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>TTS Language Mode</label>
-            <select id="edit-tts-language">
-              <option value="auto">Auto</option>
-              <option value="vi">Vietnamese</option>
-              <option value="en">English</option>
-            </select>
-          </div>
+          <div class="field"><label>Google Voice (VI)</label><input type="text" id="edit-google-voice-vi" /></div>
+          <div class="field"><label>Google Voice (EN)</label><input type="text" id="edit-google-voice-en" /></div>
         </div>
         <div class="form-row">
-          <div class="field">
-            <label>Google Voice (VI)</label>
-            <input type="text" id="edit-google-voice-vi" value="vi-VN-Neural2-A" />
-          </div>
-          <div class="field">
-            <label>Google Voice (EN)</label>
-            <input type="text" id="edit-google-voice-en" value="en-US-Neural2-F" />
-          </div>
+          <div class="field"><label>Edge Voice (VI)</label><input type="text" id="edit-edge-voice-vi" /></div>
+          <div class="field"><label>Edge Voice (EN)</label><input type="text" id="edit-edge-voice-en" /></div>
         </div>
         <div class="form-row">
-          <div class="field">
-            <label>Edge Voice (VI)</label>
-            <input type="text" id="edit-edge-voice-vi" value="vi-VN-HoaiMyNeural" />
-          </div>
-          <div class="field">
-            <label>Edge Voice (EN)</label>
-            <input type="text" id="edit-edge-voice-en" value="en-US-JennyNeural" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="field">
-            <label>Voice Style</label>
-            <select id="edit-voice-style">
-              <option value="default">Default</option>
-              <option value="happy">Happy</option>
-              <option value="sad">Sad</option>
-              <option value="angry">Angry</option>
-              <option value="calm">Calm</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Language</label>
-            <select id="edit-language">
-              <option value="vi">Vietnamese</option>
-              <option value="en">English</option>
-              <option value="ja">Japanese</option>
-              <option value="zh">Chinese</option>
-            </select>
-          </div>
+          <div class="field"><label>Phong cách giọng</label><select id="edit-voice-style"><option value="default">Mặc định</option><option value="happy">Vui vẻ</option><option value="calm">Bình tĩnh</option><option value="sad">Buồn</option><option value="angry">Nghiêm túc</option></select></div>
+          <div class="field"><label>Ngôn ngữ</label><select id="edit-language"><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option><option value="ja">Tiếng Nhật</option><option value="zh">Tiếng Trung</option></select></div>
         </div>
       </div>
-      <div style="display:flex; gap:.6rem;">
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <div style="display:flex;gap:.6rem;">
+        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Hủy</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- ════ TOAST ════ -->
-<div class="toast" id="toast">
-  <span id="toast-icon"></span>
-  <span id="toast-msg"></span>
-</div>
+<div class="toast" id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
 
 <script>
-  const ROBOT_IMAGE_URL = '/static/asset/Nexusbot.png';
-  const API_ROBOTS = '/api/robots/';
+// ═══════════════════ DATA ═══════════════════
+let VOCAB_TOPICS = [
+  { id:'travel', icon:'✈️', name:'Du lịch', count:45, level:'beginner', category:'beginner',
+    words:[
+      {word:'Passport',phonetic:'/ˈpæspɔːrt/',type:'noun',meaning:'Hộ chiếu',example:'I need to show my passport at the airport.'},
+      {word:'Luggage',phonetic:'/ˈlʌɡɪdʒ/',type:'noun',meaning:'Hành lý',example:'Please put your luggage in the overhead bin.'},
+      {word:'Boarding pass',phonetic:'/ˈbɔːrdɪŋ pæs/',type:'noun',meaning:'Thẻ lên máy bay',example:'Show your boarding pass at the gate.'},
+      {word:'Departure',phonetic:'/dɪˈpɑːrtʃər/',type:'noun',meaning:'Khởi hành',example:'The departure is scheduled for 9 AM.'},
+      {word:'Destination',phonetic:'/ˌdestɪˈneɪʃən/',type:'noun',meaning:'Điểm đến',example:'Our destination is Paris, France.'},
+    ]},
+  { id:'work', icon:'💼', name:'Công việc', count:60, level:'intermediate', category:'intermediate',
+    words:[
+      {word:'Deadline',phonetic:'/ˈdedlaɪn/',type:'noun',meaning:'Hạn chót',example:'We must meet the deadline by Friday.'},
+      {word:'Collaborate',phonetic:'/kəˈlæbəreɪt/',type:'verb',meaning:'Hợp tác',example:'We collaborate with teams across the globe.'},
+      {word:'Presentation',phonetic:'/ˌprezənˈteɪʃən/',type:'noun',meaning:'Bài thuyết trình',example:'Her presentation impressed the board.'},
+      {word:'Negotiate',phonetic:'/nɪˈɡoʊʃieɪt/',type:'verb',meaning:'Đàm phán',example:'They need to negotiate the contract terms.'},
+      {word:'Strategy',phonetic:'/ˈstrætədʒi/',type:'noun',meaning:'Chiến lược',example:'We need a clear marketing strategy.'},
+    ]},
+  { id:'food', icon:'🍜', name:'Ẩm thực', count:38, level:'beginner', category:'beginner',
+    words:[
+      {word:'Appetizer',phonetic:'/ˈæpɪtaɪzər/',type:'noun',meaning:'Món khai vị',example:'Would you like to order an appetizer?'},
+      {word:'Cuisine',phonetic:'/kwɪˈziːn/',type:'noun',meaning:'Ẩm thực / nền bếp',example:'I love Vietnamese cuisine.'},
+      {word:'Ingredient',phonetic:'/ɪnˈɡriːdiənt/',type:'noun',meaning:'Nguyên liệu',example:'This dish has many fresh ingredients.'},
+      {word:'Recipe',phonetic:'/ˈresɪpi/',type:'noun',meaning:'Công thức nấu ăn',example:'Can you share the recipe for this soup?'},
+      {word:'Seasoning',phonetic:'/ˈsiːzənɪŋ/',type:'noun',meaning:'Gia vị',example:'The seasoning makes this dish special.'},
+    ]},
+  { id:'health', icon:'🏥', name:'Y tế', count:42, level:'intermediate', category:'intermediate',
+    words:[
+      {word:'Symptom',phonetic:'/ˈsɪmptəm/',type:'noun',meaning:'Triệu chứng',example:'Common symptoms include fever and cough.'},
+      {word:'Prescription',phonetic:'/prɪˈskrɪpʃən/',type:'noun',meaning:'Đơn thuốc',example:'You need a prescription for this medicine.'},
+      {word:'Diagnosis',phonetic:'/ˌdaɪəɡˈnoʊsɪs/',type:'noun',meaning:'Chẩn đoán',example:'The diagnosis came back negative.'},
+      {word:'Treatment',phonetic:'/ˈtriːtmənt/',type:'noun',meaning:'Điều trị',example:'The treatment plan includes therapy.'},
+      {word:'Recovery',phonetic:'/rɪˈkʌvəri/',type:'noun',meaning:'Hồi phục',example:'Her recovery was faster than expected.'},
+    ]},
+  { id:'tech', icon:'💻', name:'Công nghệ', count:55, level:'advanced', category:'advanced',
+    words:[
+      {word:'Algorithm',phonetic:'/ˈælɡərɪðəm/',type:'noun',meaning:'Thuật toán',example:'The search algorithm finds results quickly.'},
+      {word:'Interface',phonetic:'/ˈɪntərfeɪs/',type:'noun',meaning:'Giao diện',example:'The user interface is very intuitive.'},
+      {word:'Database',phonetic:'/ˈdeɪtəbeɪs/',type:'noun',meaning:'Cơ sở dữ liệu',example:'All data is stored in the cloud database.'},
+      {word:'Bandwidth',phonetic:'/ˈbændwɪdθ/',type:'noun',meaning:'Băng thông',example:'High bandwidth is needed for video calls.'},
+      {word:'Encryption',phonetic:'/ɪnˈkrɪpʃən/',type:'noun',meaning:'Mã hóa',example:'End-to-end encryption protects your data.'},
+    ]},
+  { id:'edu', icon:'🏫', name:'Giáo dục', count:40, level:'beginner', category:'beginner',
+    words:[
+      {word:'Curriculum',phonetic:'/kəˈrɪkjələm/',type:'noun',meaning:'Chương trình học',example:'The curriculum covers math, science, and arts.'},
+      {word:'Scholarship',phonetic:'/ˈskɒlərʃɪp/',type:'noun',meaning:'Học bổng',example:'She received a full scholarship to study abroad.'},
+      {word:'Assessment',phonetic:'/əˈsesmənt/',type:'noun',meaning:'Đánh giá',example:'Regular assessments help track student progress.'},
+      {word:'Seminar',phonetic:'/ˈsemɪnɑːr/',type:'noun',meaning:'Hội thảo / Buổi học nhóm',example:'We have a seminar on Friday afternoon.'},
+      {word:'Lecture',phonetic:'/ˈlektʃər/',type:'noun',meaning:'Bài giảng',example:'The professor gave an interesting lecture.'},
+    ]},
+  { id:'env', icon:'🌍', name:'Môi trường', count:35, level:'advanced', category:'advanced',
+    words:[
+      {word:'Sustainable',phonetic:'/səˈsteɪnəbəl/',type:'adjective',meaning:'Bền vững',example:'We need sustainable energy solutions.'},
+      {word:'Emission',phonetic:'/ɪˈmɪʃən/',type:'noun',meaning:'Khí thải',example:'Carbon emissions are rising globally.'},
+      {word:'Biodiversity',phonetic:'/ˌbaɪoʊdaɪˈvɜːrsəti/',type:'noun',meaning:'Đa dạng sinh học',example:'The rainforest has incredible biodiversity.'},
+      {word:'Conservation',phonetic:'/ˌkɒnsərˈveɪʃən/',type:'noun',meaning:'Bảo tồn',example:'Wildlife conservation is essential.'},
+      {word:'Renewable',phonetic:'/rɪˈnjuːəbəl/',type:'adjective',meaning:'Tái tạo được',example:'Solar is a renewable energy source.'},
+    ]},
+];
 
-  let robots = [];
-  let currentUser = null;
-  let currentRole = null;
+let CONV_TOPICS = [
+  { id:'greet', icon:'👋', title:'Chào hỏi cơ bản', desc:'Làm quen và tự giới thiệu bản thân', tags:['Hàng ngày','Cơ bản'], category:'daily',
+    script:[
+      {speaker:'A',en:'Hi there! My name is Alex. Nice to meet you!',vi:'Xin chào! Tôi tên là Alex. Rất vui được gặp bạn!'},
+      {speaker:'B',en:'Nice to meet you too, Alex! I\'m Linh. Are you new here?',vi:'Tôi cũng rất vui được gặp bạn, Alex! Tôi tên Linh. Bạn mới đến đây à?'},
+      {speaker:'A',en:'Yes, I just started last week. It\'s quite <span class="conv-highlight">overwhelming</span> at first.',vi:'Đúng vậy, tôi mới bắt đầu tuần trước. Lúc đầu khá choáng ngợp.'},
+      {speaker:'B',en:'I understand. Don\'t worry, you\'ll <span class="conv-highlight">get the hang of it</span> soon!',vi:'Tôi hiểu. Đừng lo, bạn sẽ quen dần thôi!'},
+    ],
+    phrases:[
+      {en:'Nice to meet you!', vi:'Rất vui được gặp bạn!'},
+      {en:'I\'m new here.', vi:'Tôi mới đến đây.'},
+      {en:'Get the hang of it', vi:'Dần quen với điều gì đó'},
+      {en:'It\'s overwhelming', vi:'Thật choáng ngợp'},
+    ]},
+  { id:'hotel', icon:'🏨', title:'Đặt phòng khách sạn', desc:'Đặt phòng, check-in, yêu cầu dịch vụ', tags:['Du lịch','Trung cấp'], category:'travel',
+    script:[
+      {speaker:'A',en:'Good evening! I have a <span class="conv-highlight">reservation</span> under the name "Nguyen".',vi:'Chào buổi tối! Tôi có đặt phòng dưới tên "Nguyễn".'},
+      {speaker:'B',en:'Let me check that for you. Yes, a standard room for two nights. Can I see your ID please?',vi:'Để tôi kiểm tra. Vâng, phòng tiêu chuẩn 2 đêm. Bạn có thể cho tôi xem CMND không?'},
+      {speaker:'A',en:'Of course. Is breakfast <span class="conv-highlight">included</span> in the rate?',vi:'Tất nhiên. Bữa sáng có được bao gồm không?'},
+      {speaker:'B',en:'Yes, it\'s served from 6 to 10 AM in the restaurant on the ground floor.',vi:'Có ạ, phục vụ từ 6 đến 10 giờ sáng tại nhà hàng tầng trệt.'},
+    ],
+    phrases:[
+      {en:'I have a reservation.', vi:'Tôi có đặt trước.'},
+      {en:'Is breakfast included?', vi:'Bữa sáng có bao gồm không?'},
+      {en:'Can I see your ID?', vi:'Cho tôi xem CMND/hộ chiếu không?'},
+      {en:'Ground floor', vi:'Tầng trệt'},
+    ]},
+  { id:'interview', icon:'💼', title:'Phỏng vấn xin việc', desc:'Trả lời câu hỏi phỏng vấn chuyên nghiệp', tags:['Công việc','Nâng cao'], category:'work',
+    script:[
+      {speaker:'A',en:'Tell me about yourself and why you\'re interested in this <span class="conv-highlight">position</span>.',vi:'Hãy kể về bản thân bạn và lý do bạn quan tâm đến vị trí này.'},
+      {speaker:'B',en:'I\'m a software engineer with 3 years of experience. I\'m passionate about building <span class="conv-highlight">scalable</span> solutions.',vi:'Tôi là kỹ sư phần mềm với 3 năm kinh nghiệm. Tôi đam mê xây dựng các giải pháp có khả năng mở rộng.'},
+      {speaker:'A',en:'What do you consider your greatest <span class="conv-highlight">strength</span>?',vi:'Bạn cho rằng điểm mạnh lớn nhất của mình là gì?'},
+      {speaker:'B',en:'My ability to adapt quickly and collaborate effectively with cross-functional teams.',vi:'Khả năng thích nghi nhanh và cộng tác hiệu quả với các nhóm liên chức năng.'},
+    ],
+    phrases:[
+      {en:'Tell me about yourself.', vi:'Hãy kể về bản thân bạn.'},
+      {en:'My greatest strength is...', vi:'Điểm mạnh lớn nhất của tôi là...'},
+      {en:'Cross-functional teams', vi:'Các nhóm liên chức năng'},
+      {en:'Scalable solutions', vi:'Giải pháp có khả năng mở rộng'},
+    ]},
+  { id:'restaurant', icon:'🍽️', title:'Gọi món tại nhà hàng', desc:'Đặt bàn, gọi món, thanh toán', tags:['Hàng ngày','Cơ bản'], category:'daily',
+    script:[
+      {speaker:'A',en:'Good evening! Do you have a <span class="conv-highlight">reservation</span>, or are you walking in?',vi:'Chào buổi tối! Bạn có đặt bàn trước hay đến trực tiếp?'},
+      {speaker:'B',en:'We\'re walking in. Table for two, please.',vi:'Chúng tôi đến trực tiếp. Cho tôi bàn 2 người.'},
+      {speaker:'A',en:'Of course. Right this way. Can I <span class="conv-highlight">start you off</span> with some drinks?',vi:'Được ạ. Mời theo tôi. Tôi có thể mang đồ uống cho bạn trước không?'},
+      {speaker:'B',en:'Yes, I\'ll have sparkling water. And could we see the <span class="conv-highlight">menu</span>?',vi:'Có, tôi muốn nước có ga. Và cho chúng tôi xem thực đơn được không?'},
+    ],
+    phrases:[
+      {en:'Table for two, please.', vi:'Cho tôi bàn 2 người.'},
+      {en:'Can I start you off with drinks?', vi:'Tôi mang đồ uống trước nhé?'},
+      {en:'Could we see the menu?', vi:'Cho chúng tôi xem thực đơn không?'},
+      {en:'Walking in', vi:'Đến không đặt trước'},
+    ]},
+  { id:'airport', icon:'🛫', title:'Tại sân bay', desc:'Check-in, qua cổng an ninh, hỏi thông tin', tags:['Du lịch','Trung cấp'], category:'travel',
+    script:[
+      {speaker:'A',en:'Good morning! Your <span class="conv-highlight">passport</span> and ticket, please.',vi:'Chào buổi sáng! Hộ chiếu và vé của bạn.'},
+      {speaker:'B',en:'Here you go. Is there a window seat available?',vi:'Đây ạ. Còn chỗ ngồi cạnh cửa sổ không?'},
+      {speaker:'A',en:'Let me check... Yes, I can <span class="conv-highlight">assign</span> you seat 14A. Any bags to check?',vi:'Để tôi kiểm tra... Vâng, tôi có thể xếp bạn ghế 14A. Có hành lý ký gửi không?'},
+      {speaker:'B',en:'Just one. And where is the <span class="conv-highlight">departure gate</span>?',vi:'Chỉ một cái. Và cổng khởi hành ở đâu ạ?'},
+    ],
+    phrases:[
+      {en:'Is there a window seat?', vi:'Còn chỗ ngồi cạnh cửa sổ không?'},
+      {en:'Any bags to check?', vi:'Có hành lý ký gửi không?'},
+      {en:'Departure gate', vi:'Cổng khởi hành'},
+      {en:'Boarding pass', vi:'Thẻ lên máy bay'},
+    ]},
+  { id:'shopping', icon:'🛒', title:'Mua sắm', desc:'Hỏi giá, thử đồ, mặc cả và thanh toán', tags:['Hàng ngày','Cơ bản'], category:'daily',
+    script:[
+      {speaker:'A',en:'Excuse me, how much is this jacket?',vi:'Xin lỗi, áo khoác này bao nhiêu tiền?'},
+      {speaker:'B',en:'It\'s $89.99. We also have it in different <span class="conv-highlight">sizes and colors</span>.',vi:'89.99 đô. Chúng tôi cũng có nhiều kích cỡ và màu sắc.'},
+      {speaker:'A',en:'Can I <span class="conv-highlight">try it on</span>? And is it on sale?',vi:'Tôi có thể mặc thử không? Và có đang giảm giá không?'},
+      {speaker:'B',en:'Yes, <span class="conv-highlight">fitting rooms</span> are on the right. It\'s 20% off this weekend!',vi:'Phòng thử đồ ở bên phải. Cuối tuần này giảm 20%!'},
+    ],
+    phrases:[
+      {en:'How much is this?', vi:'Cái này bao nhiêu?'},
+      {en:'Can I try it on?', vi:'Tôi có thể mặc thử không?'},
+      {en:'Fitting rooms', vi:'Phòng thử đồ'},
+      {en:'It\'s on sale.', vi:'Đang giảm giá.'},
+    ]},
+];
 
-  function esc(s) {
-    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-  function toast(icon, msg, type) {
-    const el = document.getElementById('toast');
-    document.getElementById('toast-icon').textContent = icon;
-    document.getElementById('toast-msg').textContent = msg;
-    el.className = 'toast show' + (type ? ' '+type : '');
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('show'), 3200);
-  }
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso); if (isNaN(d)) return '—';
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const yy = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2,'0');
-    const mi = String(d.getMinutes()).padStart(2,'0');
-    return `${dd}/${mm}/${yy} ${hh}:${mi}`;
-  }
-  function timeAgo(iso) {
-    if (!iso) return '';
-    const d = new Date(iso); if (isNaN(d)) return '';
-    const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (sec < 60) return 'vừa xong';
-    if (sec < 3600) return Math.floor(sec/60) + ' phút trước';
-    if (sec < 86400) return Math.floor(sec/3600) + ' giờ trước';
-    return Math.floor(sec/86400) + ' ngày trước';
-  }
+// ═══════════════════ LANDING ═══════════════════
+function scrollTo(id) {
+  document.querySelector(id)?.scrollIntoView({ behavior:'smooth' });
+}
+function switchPreviewTab(type, el) {
+  document.querySelectorAll('.topic-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('preview-vocab').style.display = type==='vocab' ? 'flex' : 'none';
+  document.getElementById('preview-conv').style.display  = type==='conv'  ? 'flex' : 'none';
+}
+function requireLogin() {
+  document.getElementById('login-notify').classList.add('open');
+}
+function closeNotify() {
+  document.getElementById('login-notify').classList.remove('open');
+}
+document.getElementById('login-notify').addEventListener('click', e => { if(e.target.id==='login-notify') closeNotify(); });
 
-  function readTtsConfig(prefix) {
-    const provider = (document.getElementById(prefix + '-tts-provider')?.value || 'google').trim();
-    const language = (document.getElementById(prefix + '-tts-language')?.value || 'auto').trim();
-    const googleVoiceVi = (document.getElementById(prefix + '-google-voice-vi')?.value || 'vi-VN-Neural2-A').trim();
-    const googleVoiceEn = (document.getElementById(prefix + '-google-voice-en')?.value || 'en-US-Neural2-F').trim();
-    const edgeVoiceVi = (document.getElementById(prefix + '-edge-voice-vi')?.value || 'vi-VN-HoaiMyNeural').trim();
-    const edgeVoiceEn = (document.getElementById(prefix + '-edge-voice-en')?.value || 'en-US-JennyNeural').trim();
+function openLogin() { document.getElementById('login-overlay').classList.add('open'); }
+function closeLogin() { document.getElementById('login-overlay').classList.remove('open'); }
+document.getElementById('login-overlay').addEventListener('click', e => { if(e.target.id==='login-overlay') closeLogin(); });
 
-    return {
-      provider: provider || 'google',
-      language: language || 'auto',
-      google_voice_vi: googleVoiceVi,
-      google_voice_en: googleVoiceEn,
-      edge_voice_vi: edgeVoiceVi,
-      edge_voice_en: edgeVoiceEn,
-    };
-  }
+// ═══════════════════ CORE ═══════════════════
+const ROBOT_IMAGE_URL = '/static/asset/Nexusbot.png';
+const API_ROBOTS = '/api/robots/';
+const API_ASSIGNMENTS = '/api/assignments';
+let robots = [], currentUser = null, currentRole = null;
+let learningLoaded = false;
+let assignmentItems = [];
 
-  async function apiFetch(url, options) {
-    const res = await fetch(url, { credentials: 'include', ...options });
-    if (res.status === 401) { window.location.reload(); throw new Error('Unauthorized'); }
-    if (res.status === 403) { toast('⛔', 'Bạn không có quyền thực hiện thao tác này', 'error'); throw new Error('Forbidden'); }
-    return res;
-  }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(icon,msg,type) {
+  const el=document.getElementById('toast');
+  document.getElementById('toast-icon').textContent=icon;
+  document.getElementById('toast-msg').textContent=msg;
+  el.className='toast show'+(type?' '+type:'');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),3200);
+}
+function fmtDate(iso) {
+  if(!iso)return'—';const d=new Date(iso);if(isNaN(d))return'—';
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function timeAgo(iso) {
+  if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';
+  const s=Math.floor((Date.now()-d.getTime())/1000);
+  if(s<60)return'vừa xong';if(s<3600)return Math.floor(s/60)+' phút trước';
+  if(s<86400)return Math.floor(s/3600)+' giờ trước';return Math.floor(s/86400)+' ngày trước';
+}
+function readTtsConfig(p) {
+  return {
+    provider:(document.getElementById(p+'-tts-provider')?.value||'google').trim(),
+    language:(document.getElementById(p+'-tts-language')?.value||'auto').trim(),
+    google_voice_vi:(document.getElementById(p+'-google-voice-vi')?.value||'vi-VN-Neural2-A').trim(),
+    google_voice_en:(document.getElementById(p+'-google-voice-en')?.value||'en-US-Neural2-F').trim(),
+    edge_voice_vi:(document.getElementById(p+'-edge-voice-vi')?.value||'vi-VN-HoaiMyNeural').trim(),
+    edge_voice_en:(document.getElementById(p+'-edge-voice-en')?.value||'en-US-JennyNeural').trim(),
+  };
+}
+async function apiFetch(url,options) {
+  const res=await fetch(url,{credentials:'include',...options});
+  if(res.status===401){window.location.reload();throw new Error('Unauthorized');}
+  if(res.status===403){toast('⛔','Bạn không có quyền thực hiện thao tác này','error');throw new Error('Forbidden');}
+  return res;
+}
 
-  async function loadRobots() {
-    try {
-      const res = await apiFetch(API_ROBOTS);
-      robots = res.ok ? await res.json() : [];
-    } catch (e) { robots = []; }
-    renderDashboard();
-  }
+function applyImages() {
+  const li=document.getElementById('login-avatar-img'); li.src=ROBOT_IMAGE_URL;
+  li.onerror=()=>{li.style.display='none';document.getElementById('login-avatar-emoji').style.display='flex';};
+  const si=document.getElementById('sb-logo-img'); si.src=ROBOT_IMAGE_URL;
+  si.onerror=()=>{si.style.display='none';document.getElementById('sb-logo-emoji').style.display='block';};
+}
+applyImages();
 
-  function applyRole(role) {
-    currentRole = role;
-    document.body.classList.remove('role-admin','role-viewer');
-    document.body.classList.add('role-'+role);
-    const roleText = document.getElementById('sb-role-text');
-    const nameEl   = document.getElementById('sb-username');
-    if (roleText) roleText.textContent = role === 'admin' ? 'Administrator' : 'Viewer';
-    const ex = nameEl.querySelector('.role-badge');
-    if (ex) ex.remove();
-    nameEl.insertAdjacentHTML('beforeend',
-      `<span class="role-badge ${role}">${role === 'admin' ? 'Admin' : 'Viewer'}</span>`);
-    const addBtn = document.querySelector('#tab-dashboard .topbar .btn-primary');
-    if (addBtn) addBtn.style.display = role === 'admin' ? '' : 'none';
-  }
+function applyRole(role) {
+  currentRole=role;
+  document.body.classList.remove('role-admin','role-viewer');
+  document.body.classList.add('role-'+role);
+  const rt=document.getElementById('sb-role-text');
+  const ne=document.getElementById('sb-username');
+  if(rt)rt.textContent=role==='admin'?'Administrator':'Viewer';
+  const ex=ne.querySelector('.role-badge');if(ex)ex.remove();
+  ne.insertAdjacentHTML('beforeend',`<span class="role-badge ${role}">${role==='admin'?'Admin':'Viewer'}</span>`);
+}
 
-  function applyImages() {
-    const loginImg = document.getElementById('login-avatar-img');
-    loginImg.src = ROBOT_IMAGE_URL;
-    loginImg.onerror = () => { loginImg.style.display='none'; document.getElementById('login-avatar-emoji').style.display=''; };
-    const sbImg = document.getElementById('sb-logo-img');
-    sbImg.src = ROBOT_IMAGE_URL;
-    sbImg.onerror = () => { sbImg.style.display='none'; document.getElementById('sb-logo-emoji').style.display=''; };
-  }
-  applyImages();
+function showApp(email,role) {
+  currentUser=email;
+  document.getElementById('sb-username').textContent=email;
+  document.getElementById('user-av-initial').textContent=email[0].toUpperCase();
+  document.getElementById('login-overlay').classList.remove('open');
+  document.getElementById('login-notify').classList.remove('open');
+  document.getElementById('landing-page').style.display='none';
+  document.getElementById('app').style.display='block';
+  applyRole(role);
+  loadLearningData();
+  loadRobots();
+}
 
-  function showApp(email, role) {
-    currentUser = email;
-    document.getElementById('sb-username').textContent = email;
-    document.getElementById('user-av-initial').textContent = email[0].toUpperCase();
-    document.getElementById('login-page').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    applyRole(role);
-    loadRobots();
-  }
+(async function checkSession(){
+  try{const r=await fetch('/auth/me',{credentials:'include'});if(r.ok){const d=await r.json();showApp(d.email,d.role||'viewer');}}catch(e){}
+})();
 
-  (async function checkSession() {
-    try {
-      const res = await fetch('/auth/me', { credentials: 'include' });
-      if (res.ok) { const d = await res.json(); showApp(d.email, d.role||'viewer'); }
-    } catch(e) {}
-  })();
+async function handleLogin(e) {
+  e.preventDefault();
+  const u=document.getElementById('username').value, p=document.getElementById('password').value;
+  const btn=document.getElementById('login-btn');
+  btn.innerHTML='<span class="spinner"></span> Đang đăng nhập…';btn.disabled=true;
+  try {
+    const res=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p}),credentials:'include'});
+    if(!res.ok){const err=await res.json().catch(()=>({}));toast('✕',err.detail||'Đăng nhập thất bại','error');btn.innerHTML='Đăng nhập →';btn.disabled=false;return;}
+    window.location.href='/dashboard/';return;
+  }catch(err){toast('✕','Lỗi kết nối','error');}
+  btn.innerHTML='Đăng nhập →';btn.disabled=false;
+}
+async function handleLogout() {
+  currentUser=null;window.location.href='/auth/logout';
+  setTimeout(()=>{window.location.href='/';},1200);
+}
 
-  async function handleLogin(e) {
-    e.preventDefault();
-    const u = document.getElementById('username').value;
-    const p = document.getElementById('password').value;
-    const btn = document.getElementById('login-btn');
-    btn.innerHTML = '<span class="spinner"></span> Signing in…'; btn.disabled = true;
-    try {
-      const res = await fetch('/auth/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p }), credentials: 'include'
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(()=>({}));
-        toast('✕', err.detail || 'Login failed', 'error');
-        btn.innerHTML = 'Sign In →'; btn.disabled = false; return;
-      }
-      // Sau khi login thành công, chuyển về /dashboard/ để tránh redirect loop
-      window.location.href = '/dashboard/';
-      return;
-    } catch(err) { toast('✕', 'Network error', 'error'); }
-    btn.innerHTML = 'Sign In →'; btn.disabled = false;
-  }
+function switchTab(tab,el) {
+  document.querySelectorAll('.tab-view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(el)el.classList.add('active');
+}
 
-  async function handleLogout() {
-    currentUser = null;
-    // Backend trả về redirect 302 → về trang login
-    window.location.href = '/auth/logout';
-    // Sau khi logout, chuyển về / sau 1s nếu backend không redirect
-    setTimeout(() => { window.location.href = '/'; }, 1200);
-  }
+async function loadRobots() {
+  try{const r=await apiFetch(API_ROBOTS);robots=r.ok?await r.json():[];}catch(e){robots=[];}
+  renderDashboard();
+}
 
-  function switchTab(tab, el) {
-    document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('tab-'+tab).classList.add('active');
-    if (el) el.classList.add('active');
-  }
-
-  function renderDashboard() {
-    const grid = document.getElementById('robots-grid');
-    const onlineCount = robots.filter(r => r.is_online).length;
-    document.getElementById('stat-total').textContent  = robots.length;
-    document.getElementById('stat-online').textContent = onlineCount;
-    document.getElementById('stat-langs').textContent  = robots.length > 0 ? '—' : '0';
-    document.getElementById('robot-count-badge').textContent = robots.length + ' unit' + (robots.length !== 1 ? 's' : '');
-
-    if (!robots.length) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-        <div class="ei">🤖</div>
-        <h3>No robots registered yet</h3>
-        <p>Add your first unit to get started.</p>
-      </div>`;
-      return;
+async function loadLearningData() {
+  if (learningLoaded) return;
+  try {
+    const res = await apiFetch('/api/learning/topics');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data.vocabulary) && data.vocabulary.length) {
+      VOCAB_TOPICS = data.vocabulary.map(topic => ({
+        ...topic,
+        words: Array.isArray(topic.words)
+          ? topic.words.map(w => ({
+              word: w.word || '',
+              phonetic: w.phonetic || '/--/',
+              type: w.type || 'word',
+              meaning: w.meaning || '',
+              example: w.example || '',
+            }))
+          : [],
+      }));
     }
+    if (Array.isArray(data.conversation) && data.conversation.length) {
+      CONV_TOPICS = data.conversation;
+    }
+    learningLoaded = true;
+    renderVocabTopics();
+    renderConvTopics();
+  } catch (e) {
+    // Keep local fallback data when backend data is unavailable.
+  }
+}
 
-    grid.innerHTML = robots.map((r, i) => {
-      const isOnline = r.is_online;
-      const statusClass = isOnline ? 'status-online' : 'status-offline';
-      const statusText  = isOnline ? 'Online' : 'Offline';
-      const createdAt   = fmtDate(r.created_at);
-      const lastSeen    = r.last_seen ? timeAgo(r.last_seen) : 'Chưa kết nối';
-      const ownerText   = r.owner_username ? esc(r.owner_username) : '<i style="color:var(--text-3)">Chưa gán</i>';
-
-      return `
-      <div class="robot-card" style="animation-delay:${i*.07}s">
-        <div class="card-cover">
-          <div class="card-cover-pattern"></div>
-          <div class="card-avatar">
-            <img src="${ROBOT_IMAGE_URL}" alt="${esc(r.name||r.robot_id)}"
-              onerror="this.style.display='none'; this.parentNode.querySelector('.ca-emoji').style.display='flex'" />
-            <span class="ca-emoji" style="display:none; font-size:1.75rem; width:100%; height:100%; align-items:center; justify-content:center;">🤖</span>
-          </div>
-          <div class="card-status">
-            <span class="status-chip ${statusClass}">
-              <span class="status-dot"></span>${statusText}
-            </span>
-          </div>
+function renderDashboard() {
+  const grid=document.getElementById('robots-grid');
+  const online=robots.filter(r=>r.is_online).length;
+  document.getElementById('stat-total').textContent=robots.length;
+  document.getElementById('stat-online').textContent=online;
+  const sl=document.getElementById('stat-langs');if(sl)sl.textContent=robots.length>0?'4':'0';
+  document.getElementById('robot-count-badge').textContent=robots.length+' robot'+(robots.length!==1?'s':'');
+  if(!robots.length){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="ei">🤖</div><h3>Chưa có robot nào</h3><p>Thêm robot đầu tiên để bắt đầu.</p></div>`;return;
+  }
+  grid.innerHTML=robots.map((r,i)=>{
+    const on=r.is_online, sc=on?'status-online':'status-offline', st=on?'Online':'Offline';
+    const owner=r.owner_username?esc(r.owner_username):'<i style="color:var(--text-3)">Chưa gán</i>';
+    return `<div class="robot-card" style="animation-delay:${i*.07}s">
+      <div class="card-cover"><div class="card-cover-pattern"></div>
+        <div class="card-avatar">
+          <img src="${ROBOT_IMAGE_URL}" alt="${esc(r.name||r.robot_id)}" onerror="this.style.display='none';this.parentNode.querySelector('.ca-emoji').style.display='flex'" />
+          <span class="ca-emoji" style="display:none;font-size:1.65rem;width:100%;height:100%;align-items:center;justify-content:center;">🤖</span>
         </div>
-        <div class="card-body">
-          <div class="card-name">${esc(r.name || r.robot_id)}</div>
-          <div class="card-mac">${esc(r.mac_address)}</div>
-          <div class="card-info">
-            <span class="card-info-label">ID</span>
-            <span class="card-info-val" style="font-family:'JetBrains Mono',monospace; font-size:.68rem;">${esc(r.robot_id)}</span>
-            <span class="card-info-label">Đăng ký</span>
-            <span class="card-info-val">${createdAt}</span>
-            <span class="card-info-label">Lần cuối</span>
-            <span class="card-info-val">${isOnline ? '🟢 Đang online' : lastSeen}</span>
-            <span class="card-info-label">Owner</span>
-            <span class="card-info-val">${ownerText}</span>
-          </div>
-          <div class="card-actions">
-            <button class="btn btn-ghost btn-sm" onclick="openEdit(${i})" style="flex:1;">
-              ✏️ Edit
-            </button>
-            ${currentRole === 'admin' ? `
-              <button class="btn btn-ghost btn-sm btn-icon" onclick="generateOTP('${esc(r.mac_address)}')" title="Tạo OTP">🔑</button>
-              <button class="btn btn-danger btn-sm btn-icon" onclick="deleteRobot(${i})" title="Xóa robot">🗑</button>
-            ` : ''}
-          </div>
+        <div class="card-status"><span class="status-chip ${sc}"><span class="status-dot"></span>${st}</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${esc(r.name||r.robot_id)}</div>
+        <div class="card-mac">${esc(r.mac_address)}</div>
+        <div class="card-info">
+          <span class="card-info-label">ID</span><span class="card-info-val" style="font-family:'JetBrains Mono',monospace;font-size:.66rem;">${esc(r.robot_id)}</span>
+          <span class="card-info-label">Đăng ký</span><span class="card-info-val">${fmtDate(r.created_at)}</span>
+          <span class="card-info-label">Lần cuối</span><span class="card-info-val">${on?'🟢 Đang online':timeAgo(r.last_seen)||'Chưa kết nối'}</span>
+          <span class="card-info-label">Owner</span><span class="card-info-val">${owner}</span>
         </div>
-      </div>`;
-    }).join('');
-  }
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openEdit(${i})" style="flex:1;">✏️ Chỉnh sửa</button>
+          ${currentRole==='admin'?`<button class="btn btn-ghost btn-sm btn-icon" onclick="generateOTP('${esc(r.mac_address)}')" title="Tạo OTP">🔑</button><button class="btn btn-danger btn-sm btn-icon" onclick="deleteRobot(${i})" title="Xóa">🗑</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  async function handleCreateRobot(e) {
-    e.preventDefault();
-    const btn = document.getElementById('create-btn');
-    btn.innerHTML = '<span class="spinner"></span> Creating…'; btn.disabled = true;
-    const name    = document.getElementById('robot-name').value.trim();
-    const mac     = document.getElementById('robot-mac').value.trim();
-    const robotId = 'robot-' + mac.replace(/:/g,'').toLowerCase();
-    const systemPrompt = document.getElementById('robot-system-prompt').value;
-    const voiceStyle = document.getElementById('robot-voice-style').value;
-    const uiLanguage = document.getElementById('robot-language').value;
-    const ttsConfig = readTtsConfig('robot');
-    try {
-      const res = await apiFetch(API_ROBOTS, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mac_address: mac, robot_id: robotId, name: name || null }),
-      });
-      if (res.ok) {
-        const cfgRes = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/config', {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_prompt: systemPrompt,
-            voice_config: { style: voiceStyle },
-            tts_config: ttsConfig,
-            stt_config: { language: uiLanguage },
-          }),
-        });
-        if (!cfgRes.ok) {
-          const err = await cfgRes.json().catch(()=>({}));
-          toast('✕', err.detail || 'Robot created nhưng update config thất bại', 'error');
-        }
-        toast('✓', 'Robot created successfully!', 'success');
-        document.getElementById('robot-form').reset();
-        document.getElementById('robot-tts-provider').value = 'google';
-        document.getElementById('robot-tts-language').value = 'auto';
-        document.getElementById('robot-google-voice-vi').value = 'vi-VN-Neural2-A';
-        document.getElementById('robot-google-voice-en').value = 'en-US-Neural2-F';
-        document.getElementById('robot-edge-voice-vi').value = 'vi-VN-HoaiMyNeural';
-        document.getElementById('robot-edge-voice-en').value = 'en-US-JennyNeural';
-        switchTab('dashboard', document.querySelector('[data-tab=dashboard]'));
-        await loadRobots();
-      } else {
-        const err = await res.json().catch(()=>({}));
-        toast('✕', err.detail || 'Failed to create robot', 'error');
-      }
-    } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); }
-    btn.innerHTML = 'Create Robot →'; btn.disabled = false;
-  }
+// ═══════════════════ VOCAB ═══════════════════
+let vocabFilter='all', currentTopicWords=[], currentCardIdx=0, isFlipped=false;
 
-  async function openEdit(i) {
-    const r = robots[i];
-    document.getElementById('edit-id').value = r.mac_address;
-    document.getElementById('edit-name').value = r.name || '';
-    document.getElementById('edit-description').value = '';
-    try {
-      const res = await apiFetch(API_ROBOTS + encodeURIComponent(r.mac_address) + '/config');
-      if (res.ok) {
-        const cfg = await res.json();
-        document.getElementById('edit-system-prompt').value = cfg.system_prompt || '';
-        const ttsCfg = cfg.tts_config || {};
-        document.getElementById('edit-tts-provider').value = ttsCfg.provider || 'google';
-        document.getElementById('edit-tts-language').value = ttsCfg.language || 'auto';
-        document.getElementById('edit-google-voice-vi').value = ttsCfg.google_voice_vi || 'vi-VN-Neural2-A';
-        document.getElementById('edit-google-voice-en').value = ttsCfg.google_voice_en || 'en-US-Neural2-F';
-        document.getElementById('edit-edge-voice-vi').value = ttsCfg.edge_voice_vi || 'vi-VN-HoaiMyNeural';
-        document.getElementById('edit-edge-voice-en').value = ttsCfg.edge_voice_en || 'en-US-JennyNeural';
-      } else { document.getElementById('edit-system-prompt').value = ''; }
-    } catch(e) { document.getElementById('edit-system-prompt').value = ''; }
-    if (!document.getElementById('edit-tts-provider').value) {
-      document.getElementById('edit-tts-provider').value = 'google';
+function renderVocabTopics() {
+  const grid=document.getElementById('vocab-topic-grid');
+  const filtered=vocabFilter==='all'?VOCAB_TOPICS:VOCAB_TOPICS.filter(t=>t.category===vocabFilter);
+  grid.innerHTML=filtered.map((t,i)=>`
+    <div class="topic-card" style="animation-delay:${i*.06}s" onclick="openVocabTopic('${t.id}')">
+      <span class="tc-level ${t.level}">${t.level==='beginner'?'Cơ bản':t.level==='intermediate'?'Trung cấp':'Nâng cao'}</span>
+      <div class="tc-icon">${t.icon}</div>
+      <div class="tc-name">${t.name}</div>
+      <div class="tc-count">${t.count} từ vựng</div>
+    </div>`).join('');
+}
+
+function filterVocab(f,el) {
+  vocabFilter=f;
+  document.querySelectorAll('#tab-vocabulary .learn-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');renderVocabTopics();
+}
+
+function openVocabTopic(id) {
+  const t=VOCAB_TOPICS.find(x=>x.id===id);if(!t)return;
+  currentTopicWords=t.words;currentCardIdx=0;isFlipped=false;
+  document.getElementById('vocab-topics').style.display='none';
+  document.getElementById('vocab-detail').style.display='block';
+  document.getElementById('vocab-detail-title').textContent=t.icon+' '+t.name;
+  document.getElementById('vocab-detail-sub').textContent=t.count+' từ • '+(t.level==='beginner'?'Cơ bản':t.level==='intermediate'?'Trung cấp':'Nâng cao');
+  document.getElementById('vocab-breadcrumb').textContent=t.name;
+  renderCard();
+}
+function showVocabTopics() {
+  document.getElementById('vocab-topics').style.display='block';
+  document.getElementById('vocab-detail').style.display='none';
+  document.getElementById('vocab-breadcrumb').textContent='Từ vựng';
+}
+function renderCard() {
+  const w=currentTopicWords[currentCardIdx];
+  const imgWrap=document.getElementById('fc-image-wrap');
+  const img=document.getElementById('fc-image');
+  if(w.image_url){
+    img.src=w.image_url;
+    imgWrap.style.display='block';
+  } else {
+    img.removeAttribute('src');
+    imgWrap.style.display='none';
+  }
+  document.getElementById('fc-word').textContent=w.word;
+  document.getElementById('fc-phonetic').textContent=w.phonetic;
+  document.getElementById('fc-phonetic-back').textContent=w.phonetic;
+  document.getElementById('fc-type').textContent=w.type;
+  document.getElementById('fc-meaning').textContent=w.meaning;
+  document.getElementById('fc-example').textContent=w.example;
+  document.getElementById('fc-counter').textContent=(currentCardIdx+1)+' / '+currentTopicWords.length;
+  const pct=((currentCardIdx+1)/currentTopicWords.length*100).toFixed(0);
+  document.getElementById('vocab-progress-bar').style.width=pct+'%';
+  document.getElementById('vocab-progress-label').textContent=(currentCardIdx+1)+' / '+currentTopicWords.length+' từ';
+  const fc=document.getElementById('flashcard');
+  fc.classList.remove('flipped');isFlipped=false;
+}
+function flipCard() { const fc=document.getElementById('flashcard'); fc.classList.toggle('flipped'); isFlipped=!isFlipped; }
+function nextCard() { if(currentCardIdx<currentTopicWords.length-1){currentCardIdx++;renderCard();} }
+function prevCard() { if(currentCardIdx>0){currentCardIdx--;renderCard();} }
+
+// Keyboard navigation for flashcards
+document.addEventListener('keydown', function(e) {
+  const detail=document.getElementById('vocab-detail');
+  if(!detail || detail.style.display==='none') return;
+  if(e.key==='ArrowRight') nextCard();
+  else if(e.key==='ArrowLeft') prevCard();
+  else if(e.key===' ') { e.preventDefault(); flipCard(); }
+});
+
+// ═══════════════════ CONVERSATION ═══════════════════
+let convFilter='all';
+
+function renderConvTopics() {
+  const grid=document.getElementById('conv-topic-grid');
+  const filtered=convFilter==='all'?CONV_TOPICS:CONV_TOPICS.filter(t=>t.category===convFilter);
+  grid.innerHTML=filtered.map((t,i)=>`
+    <div class="conv-card" style="animation-delay:${i*.06}s" onclick="openConvTopic('${t.id}')">
+      <div class="cc-icon">${t.icon}</div>
+      <div class="cc-title">${t.title}</div>
+      <div class="cc-desc">${t.desc}</div>
+      <div class="cc-meta">${t.tags.map(tag=>`<span class="cc-tag">${tag}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function filterConv(f,el) {
+  convFilter=f;
+  document.querySelectorAll('#tab-conversation .learn-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');renderConvTopics();
+}
+
+function openConvTopic(id) {
+  const t=CONV_TOPICS.find(x=>x.id===id);if(!t)return;
+  const phrases = Array.isArray(t.phrases) ? t.phrases : [];
+  document.getElementById('conv-topics').style.display='none';
+  document.getElementById('conv-detail').style.display='block';
+  document.getElementById('conv-detail-title').textContent=t.icon+' '+t.title;
+  document.getElementById('conv-detail-sub').textContent=t.tags.join(' • ');
+  document.getElementById('conv-script-title').textContent='Hội thoại mẫu — '+t.title;
+  document.getElementById('conv-breadcrumb').textContent=t.title;
+  document.getElementById('conv-script-body').innerHTML=t.script.map(line=>`
+    <div class="conv-line">
+      <div class="conv-speaker">
+        <div class="conv-speaker-name">${line.speaker}</div>
+        <div class="conv-speaker-av sp-${line.speaker.toLowerCase()}">${line.speaker==='A'?'😊':'🙂'}</div>
+      </div>
+      <div class="conv-bubble">
+        <div class="conv-en">${line.en}</div>
+        <div class="conv-vi">${line.vi}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('conv-phrase-list').innerHTML=phrases.map(p=>`
+    <div class="phrase-item">
+      <div class="pi-dot"></div>
+      <div><div class="pi-en">${p.en}</div><div class="pi-vi">${p.vi}</div></div>
+    </div>`).join('') || '<div style="font-size:.75rem;color:var(--text-3)">Chưa có cụm từ mẫu cho chủ đề này.</div>';
+}
+function showConvTopics() {
+  document.getElementById('conv-topics').style.display='block';
+  document.getElementById('conv-detail').style.display='none';
+  document.getElementById('conv-breadcrumb').textContent='Hội thoại';
+}
+
+// ═══════════════════ ROBOT CRUD ═══════════════════
+async function handleCreateRobot(e) {
+  e.preventDefault();const btn=document.getElementById('create-btn');
+  btn.innerHTML='<span class="spinner"></span> Đang tạo…';btn.disabled=true;
+  const name=document.getElementById('robot-name').value.trim(),mac=document.getElementById('robot-mac').value.trim();
+  const robotId='robot-'+mac.replace(/:/g,'').toLowerCase();
+  const ttsConfig=readTtsConfig('robot');
+  try{
+    const res=await apiFetch(API_ROBOTS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mac_address:mac,robot_id:robotId,name:name||null})});
+    if(res.ok){
+      await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_prompt:document.getElementById('robot-system-prompt').value,voice_config:{style:document.getElementById('robot-voice-style').value},tts_config:ttsConfig,stt_config:{language:document.getElementById('robot-language').value}})});
+      toast('✓','Robot tạo thành công!','success');document.getElementById('robot-form').reset();
+      switchTab('dashboard',document.querySelector('[data-tab=dashboard]'));await loadRobots();
+    }else{const err=await res.json().catch(()=>({}));toast('✕',err.detail||'Tạo robot thất bại','error');}
+  }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+  btn.innerHTML='Tạo Robot →';btn.disabled=false;
+}
+
+async function openEdit(i) {
+  const r=robots[i];
+  document.getElementById('edit-id').value=r.mac_address;
+  document.getElementById('edit-name').value=r.name||'';
+  document.getElementById('edit-description').value='';
+  try{
+    const res=await apiFetch(API_ROBOTS+encodeURIComponent(r.mac_address)+'/config');
+    if(res.ok){const cfg=await res.json();const tc=cfg.tts_config||{};
+      document.getElementById('edit-system-prompt').value=cfg.system_prompt||'';
+      document.getElementById('edit-tts-provider').value=tc.provider||'google';
+      document.getElementById('edit-tts-language').value=tc.language||'auto';
+      document.getElementById('edit-google-voice-vi').value=tc.google_voice_vi||'vi-VN-Neural2-A';
+      document.getElementById('edit-google-voice-en').value=tc.google_voice_en||'en-US-Neural2-F';
+      document.getElementById('edit-edge-voice-vi').value=tc.edge_voice_vi||'vi-VN-HoaiMyNeural';
+      document.getElementById('edit-edge-voice-en').value=tc.edge_voice_en||'en-US-JennyNeural';
     }
-    if (!document.getElementById('edit-tts-language').value) {
-      document.getElementById('edit-tts-language').value = 'auto';
-    }
-    if (!document.getElementById('edit-google-voice-vi').value) {
-      document.getElementById('edit-google-voice-vi').value = 'vi-VN-Neural2-A';
-    }
-    if (!document.getElementById('edit-google-voice-en').value) {
-      document.getElementById('edit-google-voice-en').value = 'en-US-Neural2-F';
-    }
-    if (!document.getElementById('edit-edge-voice-vi').value) {
-      document.getElementById('edit-edge-voice-vi').value = 'vi-VN-HoaiMyNeural';
-    }
-    if (!document.getElementById('edit-edge-voice-en').value) {
-      document.getElementById('edit-edge-voice-en').value = 'en-US-JennyNeural';
-    }
-    document.getElementById('edit-voice-style').value = 'default';
-    document.getElementById('edit-language').value    = 'vi';
-    document.getElementById('modal-title').textContent = 'Edit — ' + (r.name || r.robot_id);
-    document.getElementById('edit-modal').classList.add('open');
+  }catch(e){document.getElementById('edit-system-prompt').value='';}
+  document.getElementById('edit-voice-style').value='default';document.getElementById('edit-language').value='vi';
+  document.getElementById('modal-title').textContent='Chỉnh sửa — '+(r.name||r.robot_id);
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('edit-modal').classList.remove('open');}
+document.getElementById('edit-modal').addEventListener('click',e=>{if(e.target.id==='edit-modal')closeModal();});
+
+async function handleUpdateRobot(e) {
+  e.preventDefault();const mac=document.getElementById('edit-id').value,name=document.getElementById('edit-name').value.trim();
+  const ttsConfig=readTtsConfig('edit');
+  try{const res=await apiFetch(API_ROBOTS+encodeURIComponent(mac),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name||null})});if(!res.ok){const err=await res.json().catch(()=>({}));toast('✕',err.detail||'Cập nhật thất bại','error');return;}}catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');return;}
+  try{const res2=await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_prompt:document.getElementById('edit-system-prompt').value,voice_config:{style:document.getElementById('edit-voice-style').value},tts_config:ttsConfig,stt_config:{language:document.getElementById('edit-language').value}})});
+    if(res2.ok){toast('✓','Đã lưu thay đổi!','success');closeModal();await loadRobots();}
+    else{const err=await res2.json().catch(()=>({}));toast('✕',err.detail||'Cập nhật thất bại','error');}
+  }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+}
+
+async function deleteRobot(i) {
+  const r=robots[i];if(!confirm('Xóa robot "'+( r.name||r.robot_id)+'" khỏi hệ thống?'))return;
+  try{const res=await apiFetch(API_ROBOTS+encodeURIComponent(r.mac_address),{method:'DELETE'});if(res.ok){toast('✓','Đã xóa robot.','');await loadRobots();}else{const err=await res.json().catch(()=>({}));toast('✕',err.detail||'Xóa thất bại','error');}}catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+}
+
+async function generateOTP(mac) {
+  try{const res=await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/otp',{method:'POST'});if(res.ok){const d=await res.json();prompt('OTP cho robot '+mac+' (hết hạn 10 phút):',d.otp);toast('🔑','OTP: '+d.otp,'success');}else toast('✕','Tạo OTP thất bại','error');}
+  catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+}
+
+async function handleClaimRobot(e) {
+  e.preventDefault();const btn=document.getElementById('claim-btn'),rd=document.getElementById('claim-result');
+  btn.innerHTML='<span class="spinner"></span> Đang claim…';btn.disabled=true;rd.style.display='none';
+  try{const res=await apiFetch('/api/robots/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({otp:document.getElementById('claim-otp').value.trim()})});
+    const data=await res.json();
+    if(res.ok&&data.ok){toast('✓',data.message||'Claim thành công!','success');rd.innerHTML=`<div style="color:var(--green);font-size:.83rem;font-weight:600;padding:.75rem;background:var(--green-d);border-radius:var(--r-xs);border:1px solid rgba(26,158,92,.2);">✅ ${esc(data.message)}</div>`;rd.style.display='block';document.getElementById('claim-form').reset();await loadRobots();}
+    else{const m=data.detail||data.message||'Claim thất bại';toast('✕',m,'error');rd.innerHTML=`<div style="color:var(--red);font-size:.83rem;font-weight:600;padding:.75rem;background:var(--red-soft);border-radius:var(--r-xs);">❌ ${esc(m)}</div>`;rd.style.display='block';}
+  }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+  btn.innerHTML='🔑 Claim Robot';btn.disabled=false;
+}
+
+const ffm=document.getElementById('firmware-form');
+if(ffm)ffm.addEventListener('submit',async function(e){
+  e.preventDefault();const fi=document.getElementById('firmware-file'),rd=document.getElementById('firmware-upload-result'),btn=document.getElementById('firmware-upload-btn');
+  if(!fi.files.length)return;btn.innerHTML='<span class="spinner"></span> Uploading…';btn.disabled=true;rd.style.display='none';
+  const fd=new FormData();fd.append('file',fi.files[0]);fd.append('version',document.getElementById('firmware-version').value.trim());fd.append('note',document.getElementById('firmware-note').value.trim());
+  try{const res=await fetch('/api/OTA/upload',{method:'POST',body:fd,credentials:'include'});const d=await res.json();
+    if(res.ok&&d.success){toast('✓','Upload thành công!','success');rd.innerHTML=`<div style="color:var(--green);font-size:.83rem;font-weight:600;padding:.75rem;background:var(--green-d);border-radius:var(--r-xs);">✅ Đã upload: <a href="${d.url}" target="_blank" style="color:var(--green);">${d.filename}</a></div>`;rd.style.display='block';ffm.reset();}
+    else{toast('✕',d.detail||'Upload thất bại','error');rd.innerHTML=`<div style="color:var(--red);font-size:.83rem;font-weight:600;padding:.75rem;background:var(--red-soft);border-radius:var(--r-xs);">❌ ${d.detail||'Upload thất bại'}</div>`;rd.style.display='block';}
+  }catch(err){toast('✕','Lỗi kết nối','error');}
+  btn.innerHTML='⬆ Upload Firmware';btn.disabled=false;
+});
+
+async function loadChatHistory() {
+  const c=document.getElementById('chat-history-container');
+  c.innerHTML='<div style="text-align:center;padding:2rem;"><span class="spinner spinner-dark"></span><br><span style="font-size:.78rem;color:var(--text-3);margin-top:.5rem;display:inline-block;">Đang tải…</span></div>';
+  try{const res=await apiFetch('/api/chat-history');if(!res.ok){c.innerHTML='<div class="empty-state"><div class="ei">⚠️</div><h3>Không thể tải lịch sử</h3></div>';return;}
+    const data=await res.json();const sessions=data.sessions||[];
+    if(!sessions.length){c.innerHTML='<div class="empty-state"><div class="ei">💬</div><h3>Chưa có lịch sử trò chuyện</h3><p>Hãy bắt đầu nói chuyện với robot của bạn!</p></div>';return;}
+    c.innerHTML=sessions.map((s,idx)=>{
+      const msgs=s.messages||[],rn=s.robot_name||s.robot_mac||'Robot';
+      const mh=msgs.map(m=>{const u=m.role==='user';return`<div class="chat-msg ${u?'user-msg':'bot-msg'}"><div class="chat-msg-avatar">${u?'👤':'🤖'}</div><div><div class="chat-msg-bubble">${esc(m.content)}</div></div></div>`;}).join('');
+      return`<div class="chat-session-card" style="animation-delay:${idx*.08}s" id="chat-session-${idx}">
+        <div class="chat-session-header" onclick="toggleChatSession(${idx})">
+          <div class="robot-label"><div class="robot-icon">🤖</div><div><div>${esc(rn)}</div><div style="font-size:.63rem;color:var(--text-3);font-weight:600;">${esc(s.robot_mac||'')}</div></div></div>
+          <div class="session-meta"><span>${msgs.length} tin nhắn</span><span>🕐 ${s.updated_at?fmtDate(s.updated_at):'—'}</span><span class="toggle-icon">▼</span></div>
+        </div>
+        <div class="chat-messages">${mh||'<div style="text-align:center;color:var(--text-3);font-size:.78rem;padding:1rem;">Không có tin nhắn</div>'}</div>
+      </div>`;}).join('');
+  }catch(err){c.innerHTML='<div class="empty-state"><div class="ei">⚠️</div><h3>Lỗi kết nối</h3></div>';}
+}
+function toggleChatSession(i){const c=document.getElementById('chat-session-'+i);if(c)c.classList.toggle('open');}
+
+// ═══════════════════ ASSIGNMENTS ═══════════════════
+function resetAssignmentForm() {
+  document.getElementById('assignment-id').value='';
+  document.getElementById('assignment-title').value='';
+  document.getElementById('assignment-instructions').value='';
+  document.getElementById('assignment-category').value='';
+  document.getElementById('assignment-due').value='';
+  document.getElementById('assignment-difficulty').value='beginner';
+  const btn=document.getElementById('assignment-save-btn');
+  if(btn) btn.textContent='Lưu bài tập';
+}
+
+function renderAssignments() {
+  const list=document.getElementById('assignment-list');
+  const badge=document.getElementById('assignment-count');
+  if(!list || !badge) return;
+  badge.textContent=assignmentItems.length+' bài';
+  if(!assignmentItems.length){
+    list.innerHTML='<div class="empty-state"><div class="ei">📝</div><h3>Chưa có bài tập nào</h3><p>Tạo bài tập đầu tiên để robot hướng dẫn bé học theo nội dung riêng.</p></div>';
+    return;
   }
+  list.innerHTML=assignmentItems.map((it,idx)=>{
+    const due=it.due_at?fmtDate(it.due_at):'Không đặt';
+    const active=it.is_active;
+    const lv=it.difficulty==='advanced'?'Nâng cao':it.difficulty==='intermediate'?'Trung cấp':'Cơ bản';
+    return `<div class="robot-card" style="margin-bottom:1rem;animation-delay:${idx*.05}s">
+      <div class="card-body">
+        <div class="card-name">${esc(it.title)}</div>
+        <div class="card-info" style="grid-template-columns:110px 1fr;">
+          <span class="card-info-label">Trạng thái</span><span class="card-info-val">${active?'🟢 Đang giao':'⚪ Tạm dừng'}</span>
+          <span class="card-info-label">Mức độ</span><span class="card-info-val">${esc(lv)}</span>
+          <span class="card-info-label">Chủ đề</span><span class="card-info-val">${esc(it.category||'custom')}</span>
+          <span class="card-info-label">Hạn nộp</span><span class="card-info-val">${esc(due)}</span>
+        </div>
+        <div style="font-size:.8rem;color:var(--text-2);line-height:1.6;margin:.55rem 0 1rem;">${esc(it.instructions)}</div>
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="editAssignment(${it.id})">✏️ Sửa</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="toggleAssignment(${it.id},${active?0:1})">${active?'⏸ Tạm dừng':'▶ Kích hoạt'}</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAssignment(${it.id})" title="Xóa">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  function closeModal() { document.getElementById('edit-modal').classList.remove('open'); }
-  document.getElementById('edit-modal').addEventListener('click', e => { if (e.target.id === 'edit-modal') closeModal(); });
+async function loadAssignments() {
+  try{
+    const res=await apiFetch(API_ASSIGNMENTS);
+    if(!res.ok){assignmentItems=[];renderAssignments();return;}
+    const data=await res.json();
+    assignmentItems=Array.isArray(data.items)?data.items:[];
+  }catch(e){assignmentItems=[];}
+  renderAssignments();
+}
 
-  async function handleUpdateRobot(e) {
-    e.preventDefault();
-    const mac         = document.getElementById('edit-id').value;
-    const name        = document.getElementById('edit-name').value.trim();
-    const systemPrompt = document.getElementById('edit-system-prompt').value;
-    const voiceStyle = document.getElementById('edit-voice-style').value;
-    const uiLanguage = document.getElementById('edit-language').value;
-    const ttsConfig = readTtsConfig('edit');
-    try {
-      const res = await apiFetch(API_ROBOTS + encodeURIComponent(mac), {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name || null }),
-      });
-      if (!res.ok) { const err = await res.json().catch(()=>({})); toast('✕', err.detail || 'Update failed', 'error'); return; }
-    } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); return; }
-    try {
-      const res2 = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/config', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_prompt: systemPrompt,
-          voice_config: { style: voiceStyle },
-          tts_config: ttsConfig,
-          stt_config: { language: uiLanguage },
-        }),
-      });
-      if (res2.ok) { toast('✓', 'Changes saved!', 'success'); closeModal(); await loadRobots(); }
-      else { const err = await res2.json().catch(()=>({})); toast('✕', err.detail || 'Update failed', 'error'); }
-    } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); }
-  }
+function editAssignment(id) {
+  const it=assignmentItems.find(x=>x.id===id);if(!it)return;
+  document.getElementById('assignment-id').value=String(it.id);
+  document.getElementById('assignment-title').value=it.title||'';
+  document.getElementById('assignment-instructions').value=it.instructions||'';
+  document.getElementById('assignment-category').value=it.category||'';
+  document.getElementById('assignment-difficulty').value=it.difficulty||'beginner';
+  document.getElementById('assignment-due').value=(it.due_at||'').slice(0,16);
+  document.getElementById('assignment-save-btn').textContent='Cập nhật bài tập';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
-  async function deleteRobot(i) {
-    const r = robots[i];
-    if (!confirm('Remove "' + (r.name || r.robot_id) + '" from fleet?')) return;
-    try {
-      const res = await apiFetch(API_ROBOTS + encodeURIComponent(r.mac_address), { method: 'DELETE' });
-      if (res.ok) { toast('✓', 'Robot removed.', ''); await loadRobots(); }
-      else { const err = await res.json().catch(()=>({})); toast('✕', err.detail || 'Delete failed', 'error'); }
-    } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); }
-  }
+async function handleSaveAssignment(e) {
+  e.preventDefault();
+  const id=document.getElementById('assignment-id').value.trim();
+  const payload={
+    title:document.getElementById('assignment-title').value.trim(),
+    instructions:document.getElementById('assignment-instructions').value.trim(),
+    category:document.getElementById('assignment-category').value.trim()||'custom',
+    difficulty:document.getElementById('assignment-difficulty').value,
+    due_at:document.getElementById('assignment-due').value||null,
+    is_active:true,
+  };
+  const btn=document.getElementById('assignment-save-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Đang lưu…';
+  try{
+    const res=await apiFetch(id?`${API_ASSIGNMENTS}/${encodeURIComponent(id)}`:API_ASSIGNMENTS,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok&&data.ok){toast('✓',id?'Đã cập nhật bài tập':'Đã tạo bài tập mới','success');resetAssignmentForm();await loadAssignments();}
+    else{toast('✕',data.detail||'Lưu bài tập thất bại','error');}
+  }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+  btn.disabled=false;btn.textContent=document.getElementById('assignment-id').value?'Cập nhật bài tập':'Lưu bài tập';
+}
 
-  async function generateOTP(mac) {
-    try {
-      const res = await apiFetch(API_ROBOTS + encodeURIComponent(mac) + '/otp', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        prompt('OTP cho robot ' + mac + ' (hết hạn 10 phút):', data.otp);
-        toast('🔑', 'OTP: ' + data.otp, 'success');
-      } else { toast('✕', 'Failed to generate OTP', 'error'); }
-    } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); }
-  }
+async function toggleAssignment(id,isActive) {
+  try{
+    const res=await apiFetch(`${API_ASSIGNMENTS}/${encodeURIComponent(id)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:!!isActive})});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok&&data.ok){toast('✓','Đã cập nhật trạng thái bài tập','success');await loadAssignments();}
+    else toast('✕',data.detail||'Không thể đổi trạng thái','error');
+  }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+}
 
-  async function handleClaimRobot(e) {
-    e.preventDefault();
-    const btn = document.getElementById('claim-btn');
-    const resultDiv = document.getElementById('claim-result');
-    btn.innerHTML = '<span class="spinner"></span> Claiming…'; btn.disabled = true;
-    resultDiv.style.display = 'none';
-    try {
-      const res = await apiFetch('/api/robots/claim', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp: document.getElementById('claim-otp').value.trim() }),
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        toast('✓', data.message || 'Claim thành công!', 'success');
-        resultDiv.innerHTML = `<div style="color:var(--green); font-size:.83rem; font-weight:600; padding:.75rem; background:var(--green-d); border-radius:var(--r-xs); border:1px solid rgba(26,158,92,.2);">✅ ${esc(data.message)}</div>`;
-        resultDiv.style.display = 'block';
-        document.getElementById('claim-form').reset();
-        await loadRobots();
-      } else {
-        const errMsg = data.detail || data.message || 'Claim thất bại';
-        toast('✕', errMsg, 'error');
-        resultDiv.innerHTML = `<div style="color:var(--red); font-size:.83rem; font-weight:600; padding:.75rem; background:var(--red-soft); border-radius:var(--r-xs); border:1px solid rgba(232,50,26,.15);">❌ ${esc(errMsg)}</div>`;
-        resultDiv.style.display = 'block';
-      }
-    } catch(err) { if (err.message !== 'Forbidden') toast('✕', 'Network error', 'error'); }
-    btn.innerHTML = '🔑 Claim Robot'; btn.disabled = false;
-  }
+async function deleteAssignment(id) {
+  if(!confirm('Xóa bài tập này?')) return;
+  try{
+    const res=await apiFetch(`${API_ASSIGNMENTS}/${encodeURIComponent(id)}`,{method:'DELETE'});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok&&data.ok){toast('✓','Đã xóa bài tập','success');await loadAssignments();}
+    else toast('✕',data.detail||'Xóa thất bại','error');
+  }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+}
 
-  const firmwareForm = document.getElementById('firmware-form');
-  if (firmwareForm) {
-    firmwareForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const fileInput = document.getElementById('firmware-file');
-      const resultDiv = document.getElementById('firmware-upload-result');
-      const btn       = document.getElementById('firmware-upload-btn');
-      if (!fileInput.files.length) return;
-      btn.innerHTML = '<span class="spinner"></span> Uploading…'; btn.disabled = true;
-      resultDiv.style.display = 'none';
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('version', document.getElementById('firmware-version').value.trim());
-      formData.append('note',    document.getElementById('firmware-note').value.trim());
-      try {
-        const res  = await fetch('/api/OTA/upload', { method: 'POST', body: formData, credentials: 'include' });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          toast('✓', 'Upload thành công!', 'success');
-          resultDiv.innerHTML = `<div style="color:var(--green); font-size:.83rem; font-weight:600; padding:.75rem; background:var(--green-d); border-radius:var(--r-xs);">✅ Đã upload: <a href="${data.url}" target="_blank" style="color:var(--green);">${data.filename}</a></div>`;
-          resultDiv.style.display = 'block';
-          firmwareForm.reset();
-        } else {
-          toast('✕', data.detail || 'Upload thất bại', 'error');
-          resultDiv.innerHTML = `<div style="color:var(--red); font-size:.83rem; font-weight:600; padding:.75rem; background:var(--red-soft); border-radius:var(--r-xs);">❌ ${data.detail || 'Upload thất bại'}</div>`;
-          resultDiv.style.display = 'block';
-        }
-      } catch(err) { toast('✕', 'Network error', 'error'); }
-      btn.innerHTML = '⬆ Upload Firmware'; btn.disabled = false;
-    });
-  }
+// Init learning tabs
+renderVocabTopics();
+renderConvTopics();
 
-  /* ═══════ CHAT HISTORY ═══════ */
-  async function loadChatHistory() {
-    const container = document.getElementById('chat-history-container');
-    container.innerHTML = '<div style="text-align:center; padding:2rem;"><span class="spinner spinner-dark"></span><br><span style="font-size:.8rem; color:var(--text-3); margin-top:.5rem; display:inline-block;">Đang tải lịch sử…</span></div>';
-    try {
-      const res = await apiFetch('/api/chat-history');
-      if (!res.ok) { container.innerHTML = '<div class="empty-state"><div class="ei">⚠️</div><h3>Không thể tải lịch sử</h3></div>'; return; }
-      const data = await res.json();
-      const sessions = data.sessions || [];
-      if (!sessions.length) {
-        container.innerHTML = '<div class="empty-state"><div class="ei">💬</div><h3>Chưa có lịch sử trò chuyện</h3><p>Hãy bắt đầu nói chuyện với robot của bạn!</p></div>';
-        return;
-      }
-      container.innerHTML = sessions.map((s, idx) => {
-        const messages = s.messages || [];
-        const msgCount = messages.length;
-        const updatedAt = s.updated_at ? fmtDate(s.updated_at) : '—';
-        const robotName = s.robot_name || s.robot_mac || 'Robot';
-        const msgsHtml = messages.map(m => {
-          const isUser = m.role === 'user';
-          const cls = isUser ? 'user-msg' : 'bot-msg';
-          const avatar = isUser ? '👤' : '🤖';
-          return `<div class="chat-msg ${cls}">
-            <div class="chat-msg-avatar">${avatar}</div>
-            <div>
-              <div class="chat-msg-bubble">${esc(m.content)}</div>
-            </div>
-          </div>`;
-        }).join('');
-        return `<div class="chat-session-card" style="animation-delay:${idx*.08}s" id="chat-session-${idx}">
-          <div class="chat-session-header" onclick="toggleChatSession(${idx})">
-            <div class="robot-label">
-              <div class="robot-icon">🤖</div>
-              <div>
-                <div>${esc(robotName)}</div>
-                <div style="font-size:.65rem; color:var(--text-3); font-weight:600; margin-top:1px;">${esc(s.robot_mac || '')}</div>
-              </div>
-            </div>
-            <div class="session-meta">
-              <span>${msgCount} tin nhắn</span>
-              <span>🕐 ${updatedAt}</span>
-              <span class="toggle-icon">▼</span>
-            </div>
-          </div>
-          <div class="chat-messages">${msgsHtml || '<div style="text-align:center; color:var(--text-3); font-size:.8rem; padding:1rem;">Không có tin nhắn</div>'}</div>
-        </div>`;
-      }).join('');
-    } catch(err) {
-      container.innerHTML = '<div class="empty-state"><div class="ei">⚠️</div><h3>Lỗi kết nối</h3><p>Không thể tải lịch sử trò chuyện</p></div>';
-    }
-  }
-
-  function toggleChatSession(idx) {
-    const card = document.getElementById('chat-session-' + idx);
-    if (card) card.classList.toggle('open');
-  }
-
-  // Auto-refresh robots every 30s
-  setInterval(() => { if (currentUser) loadRobots(); }, 30000);
-
-  // Auto-refresh chat history every 10s when tab is active (viewer only)
-  setInterval(() => {
-    if (currentUser && currentRole === 'viewer') {
-      const chatTab = document.getElementById('tab-chat-history');
-      if (chatTab && chatTab.classList.contains('active')) {
-        loadChatHistory();
-      }
-    }
-  }, 10000);
+setInterval(()=>{if(currentUser)loadRobots();},30000);
+setInterval(()=>{if(currentUser&&currentRole==='viewer'){const t=document.getElementById('tab-chat-history');if(t&&t.classList.contains('active'))loadChatHistory();}},10000);
 </script>
 </body>
 </html>

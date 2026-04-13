@@ -78,11 +78,62 @@ def init_database():
         )
     """)
 
+    # Parent custom assignments/tasks for children learning via robot
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS assignments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_username TEXT NOT NULL,
+            title TEXT NOT NULL,
+            instructions TEXT NOT NULL,
+            category TEXT DEFAULT 'custom',
+            difficulty TEXT DEFAULT 'beginner',
+            is_active INTEGER DEFAULT 1,
+            due_at TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (owner_username) REFERENCES users(username)
+        )
+    """)
+
+    # Product-scalable vocabulary storage
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vocab_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic_id TEXT UNIQUE NOT NULL,
+            icon TEXT,
+            name TEXT NOT NULL,
+            level TEXT DEFAULT 'beginner',
+            category TEXT DEFAULT 'beginner',
+            count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vocab_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic_id TEXT NOT NULL,
+            word TEXT NOT NULL,
+            meaning TEXT NOT NULL,
+            image_url TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (topic_id) REFERENCES vocab_topics(topic_id) ON DELETE CASCADE
+        )
+    """)
+
     # Create indexes
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_robots_owner ON robots(owner_username)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_robot ON chat_sessions(robot_mac)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_session ON chat_sessions(session_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_assignments_owner ON assignments(owner_username)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_assignments_active ON assignments(owner_username, is_active)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_vocab_topics_topic_id ON vocab_topics(topic_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_vocab_words_topic_id ON vocab_words(topic_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_vocab_words_sort ON vocab_words(topic_id, sort_order)")
     
     # Insert default admin user if not exists, lấy từ biến môi trường nếu có
     import os

@@ -18,6 +18,14 @@ from app.services.intent import IntentDetectorService
 from app.services.stt import STTService
 from app.services.llm import LLMService
 from app.services.tts import TTSService
+from app.services.learning_content import (
+    build_conversation_lesson,
+    build_vocab_lesson_steps,
+    build_mode_suggestion,
+    build_vocab_lesson,
+    find_topic,
+    get_topic_by_id,
+)
 
 logger = get_logger(__name__)
 
@@ -33,6 +41,7 @@ CHUNK_SPACE_BREAK = " "
 _DONE = object()
 
 _SENTENCE_MARKER = "__sentence__"
+VOCAB_BATCH_SIZE = 5
 
 
 class ConversationPipeline:
@@ -63,12 +72,15 @@ class ConversationPipeline:
         pcm_data: bytes,
         chat_history: list[dict],
         *,
+        learning_context: dict[str, str | None] | None = None,
         on_stt_result: Callable[[str], Awaitable[None]],
         on_tts_start: Callable[[], Awaitable[None]],
         on_tts_sentence: Callable[[str], Awaitable[None]],
         on_tts_audio: Callable[[bytes], Awaitable[None]],
         on_tts_stop: Callable[[], Awaitable[None]],
         on_music_action: Callable[[dict], Awaitable[None]],
+        on_learning_card: Callable[[dict], Awaitable[None]] | None = None,
+        assignment_provider: Callable[[], Awaitable[dict | None]] | None = None,
         on_emotion: Callable[[str], Awaitable[None]] | None = None,
         is_aborted: Callable[[], bool],
     ) -> tuple[str, str] | None:
@@ -86,10 +98,151 @@ class ConversationPipeline:
         # Fast path: lệnh mở nhạc -> bỏ qua LLM hội thoại dài để giảm lag.
         if self._intent_detector:
             fast_intent = self._intent_detector.detect_fast(user_text)
-            if fast_intent.intent == "music":
+            resolved_intent = fast_intent
+
+            # Hybrid fallback: keep rule-based fast path, but use LLM intent when
+            # user sounds like asking for learning/topic and fast rules miss.
+            if (
+                fast_intent.intent == "other"
+                and self._looks_like_learning_request(user_text)
+            ):
+                try:
+                    llm_intent = await self._intent_detector.detect(user_text)
+                    if llm_intent.intent in {"learning_vocab", "learning_conversation", "learning_topic"}:
+                        resolved_intent = llm_intent
+                except Exception as e:
+                    logger.warning("LLM learning intent fallback failed: %s", e)
+
+            if (
+                learning_context
+                and str(learning_context.get("mode") or "") == "vocabulary"
+                and self._looks_like_continue_request(user_text)
+            ):
+                current_topic_id = str(learning_context.get("topic_id") or "").strip()
+                selected_topic = get_topic_by_id("vocabulary", current_topic_id) if current_topic_id else None
+                if selected_topic:
+                    await on_tts_start()
+                    start_index = self._context_next_index(learning_context)
+                    reply_text, next_index, total_words = await self._teach_vocabulary_stepwise(
+                        selected_topic,
+                        on_tts_sentence=on_tts_sentence,
+                        on_tts_audio=on_tts_audio,
+                        on_learning_card=on_learning_card,
+                        is_aborted=is_aborted,
+                        start_index=start_index,
+                        batch_size=VOCAB_BATCH_SIZE,
+                    )
+                    learning_context["topic_id"] = str(selected_topic.get("id") or "")
+                    learning_context["next_index"] = str(next_index)
+                    learning_context["finished"] = "1" if next_index >= total_words else "0"
+                    if not is_aborted():
+                        await on_tts_stop()
+                    return (user_text, reply_text)
+
+            if resolved_intent.intent in {"learning_vocab", "learning_conversation", "learning_topic"}:
+                await on_tts_start()
+                mode, selected_topic, reply_text = self._handle_learning_intent(
+                    user_text,
+                    resolved_intent.intent,
+                    learning_mode=resolved_intent.learning_mode,
+                    topic_id=resolved_intent.topic_id,
+                    learning_context=learning_context,
+                )
+                if mode == "vocabulary" and selected_topic:
+                    start_index = 0
+                    if learning_context is not None:
+                        learning_context["mode"] = "vocabulary"
+                        learning_context["topic_id"] = str(selected_topic.get("id") or "")
+                        learning_context["next_index"] = "0"
+                        learning_context["finished"] = "0"
+
+                    reply_text, next_index, total_words = await self._teach_vocabulary_stepwise(
+                        selected_topic,
+                        on_tts_sentence=on_tts_sentence,
+                        on_tts_audio=on_tts_audio,
+                        on_learning_card=on_learning_card,
+                        is_aborted=is_aborted,
+                        start_index=start_index,
+                        batch_size=VOCAB_BATCH_SIZE,
+                    )
+                    if learning_context is not None:
+                        learning_context["next_index"] = str(next_index)
+                        learning_context["finished"] = "1" if next_index >= total_words else "0"
+                else:
+                    await on_tts_sentence(reply_text)
+                    await self._send_frames_with_pacing(
+                        self._tts.synthesize(reply_text),
+                        on_tts_audio=on_tts_audio,
+                        is_aborted=is_aborted,
+                    )
+                if not is_aborted():
+                    await on_tts_stop()
+                return (user_text, reply_text)
+
+            if resolved_intent.intent == "assignment":
+                await on_tts_start()
+                reply_text = "Hiện chưa có bài tập nào được giao."
+                if assignment_provider:
+                    try:
+                        assignment = await assignment_provider()
+                    except Exception as e:
+                        logger.warning("Assignment provider failed: %s", e)
+                        assignment = None
+                    if assignment:
+                        title = str(assignment.get("title") or "Bài tập hôm nay").strip()
+                        instructions = str(assignment.get("instructions") or "").strip()
+                        due_at = str(assignment.get("due_at") or "").strip()
+                        due_suffix = f" Hạn nộp: {due_at}." if due_at else ""
+                        reply_text = (
+                            f"Bài tập của con là: {title}. "
+                            f"Yêu cầu: {instructions}."
+                            f"{due_suffix} "
+                            "Con đọc lại yêu cầu và bắt đầu làm từng bước nhé."
+                        )
+                await on_tts_sentence(reply_text)
+                await self._send_frames_with_pacing(
+                    self._tts.synthesize(reply_text),
+                    on_tts_audio=on_tts_audio,
+                    is_aborted=is_aborted,
+                )
+                if not is_aborted():
+                    await on_tts_stop()
+                return (user_text, reply_text)
+
+            if learning_context and learning_context.get("mode") in {"vocabulary", "conversation"}:
+                inferred_mode = str(learning_context.get("mode"))
+                selected_topic = find_topic(inferred_mode, user_text)
+                if selected_topic:
+                    await on_tts_start()
+                    if inferred_mode == "vocabulary":
+                        reply_text, next_index, total_words = await self._teach_vocabulary_stepwise(
+                            selected_topic,
+                            on_tts_sentence=on_tts_sentence,
+                            on_tts_audio=on_tts_audio,
+                            on_learning_card=on_learning_card,
+                            is_aborted=is_aborted,
+                            start_index=0,
+                            batch_size=VOCAB_BATCH_SIZE,
+                        )
+                        learning_context["topic_id"] = str(selected_topic.get("id") or "")
+                        learning_context["next_index"] = str(next_index)
+                        learning_context["finished"] = "1" if next_index >= total_words else "0"
+                    else:
+                        reply_text = build_conversation_lesson(selected_topic)
+                        await on_tts_sentence(reply_text)
+                        await self._send_frames_with_pacing(
+                            self._tts.synthesize(reply_text),
+                            on_tts_audio=on_tts_audio,
+                            is_aborted=is_aborted,
+                        )
+                    if not is_aborted():
+                        await on_tts_stop()
+                    return (user_text, reply_text)
+
+            if resolved_intent.intent == "music":
                 logger.info("Fast music intent detected: %s", fast_intent.song_name)
                 await on_tts_start()
-                song_name = fast_intent.song_name or "nhạc việt"
+                song_name = resolved_intent.song_name or "nhạc việt"
                 music_payload = await self._call_music_tool(
                     song_name,
                     on_music_action=on_music_action,
@@ -103,8 +256,8 @@ class ConversationPipeline:
                 if not is_aborted():
                     await on_tts_stop()
                 return (user_text, "")
-            if fast_intent.intent == "alarm":
-                logger.info("Fast alarm intent detected: %s", fast_intent.alarm_time)
+            if resolved_intent.intent == "alarm":
+                logger.info("Fast alarm intent detected: %s", resolved_intent.alarm_time)
                 await on_tts_start()
                 if not self._mcp_tools:
                     await on_tts_sentence("MCP tool chưa sẵn sàng để đặt báo thức.")
@@ -114,10 +267,10 @@ class ConversationPipeline:
 
                 # Call MCP set_alarm
                 try:
-                    args = {"time": fast_intent.alarm_time or "", "message": fast_intent.alarm_message or "Báo thức"}
+                    args = {"time": resolved_intent.alarm_time or "", "message": resolved_intent.alarm_message or "Báo thức"}
                     tool_result = await self._mcp_tools.call_tool("set_alarm", args)
                     if tool_result.ok:
-                        await on_tts_sentence(f"Đã đặt báo thức vào lúc {fast_intent.alarm_time}.")
+                        await on_tts_sentence(f"Đã đặt báo thức vào lúc {resolved_intent.alarm_time}.")
                     else:
                         # try to extract error text
                         err_text = "không thể đặt báo thức"
@@ -178,6 +331,116 @@ class ConversationPipeline:
             await on_tts_stop()
 
         return (user_text, full_response) if full_response else None
+
+    @staticmethod
+    def _handle_learning_intent(
+        user_text: str,
+        intent: str,
+        *,
+        learning_mode: str | None,
+        topic_id: str | None,
+        learning_context: dict[str, str | None] | None,
+    ) -> tuple[str | None, dict | None, str]:
+        mode = learning_mode
+        if intent == "learning_vocab":
+            mode = "vocabulary"
+        elif intent == "learning_conversation":
+            mode = "conversation"
+
+        if mode in {"vocabulary", "conversation"} and learning_context is not None:
+            learning_context["mode"] = mode
+
+        selected_topic = None
+        if topic_id and mode in {"vocabulary", "conversation"}:
+            selected_topic = get_topic_by_id(mode, topic_id)
+        if selected_topic is None and mode in {"vocabulary", "conversation"}:
+            selected_topic = find_topic(mode, user_text)
+
+        if selected_topic:
+            if mode == "vocabulary":
+                return (mode, selected_topic, build_vocab_lesson(selected_topic))
+            return (mode, selected_topic, build_conversation_lesson(selected_topic))
+
+        if mode == "vocabulary":
+            return (mode, None, build_mode_suggestion("vocabulary"))
+        if mode == "conversation":
+            return (mode, None, build_mode_suggestion("conversation"))
+        return (None, None, "Mình đã sẵn sàng học theo chủ đề. Bạn muốn học từ vựng hay luyện hội thoại trước?")
+
+    async def _teach_vocabulary_stepwise(
+        self,
+        topic: dict,
+        *,
+        on_tts_sentence: Callable[[str], Awaitable[None]],
+        on_tts_audio: Callable[[bytes], Awaitable[None]],
+        on_learning_card: Callable[[dict], Awaitable[None]] | None,
+        is_aborted: Callable[[], bool],
+        start_index: int = 0,
+        batch_size: int = VOCAB_BATCH_SIZE,
+    ) -> tuple[str, int, int]:
+        total_words = len(topic.get("words") or [])
+        steps = build_vocab_lesson_steps(topic, max_words=batch_size, start_index=start_index)
+        spoken_lines: list[str] = []
+        for step in steps:
+            if is_aborted():
+                break
+            flashcard_payload = step.get("flashcard") if isinstance(step, dict) else None
+            if flashcard_payload and on_learning_card:
+                await on_learning_card(flashcard_payload)
+            speech = str(step.get("speech") or "").strip() if isinstance(step, dict) else ""
+            if not speech:
+                continue
+            spoken_lines.append(speech)
+            await on_tts_sentence(speech)
+            await self._send_frames_with_pacing(
+                self._tts.synthesize(speech),
+                on_tts_audio=on_tts_audio,
+                is_aborted=is_aborted,
+            )
+            await asyncio.sleep(self._tts.frame_duration_s * 2)
+        consumed = sum(1 for step in steps if isinstance(step, dict) and step.get("flashcard"))
+        next_index = min(total_words, max(0, start_index) + consumed)
+        return (" ".join(spoken_lines).strip(), next_index, total_words)
+
+    @staticmethod
+    def _looks_like_learning_request(text: str) -> bool:
+        lowered = (text or "").lower()
+        learning_markers = (
+            "học",
+            "hoc",
+            "từ vựng",
+            "tu vung",
+            "hội thoại",
+            "hoi thoai",
+            "chủ đề",
+            "chu de",
+            "luyện",
+            "luyen",
+        )
+        return any(marker in lowered for marker in learning_markers)
+
+    @staticmethod
+    def _looks_like_continue_request(text: str) -> bool:
+        lowered = (text or "").lower()
+        continue_markers = (
+            "học tiếp",
+            "hoc tiep",
+            "tiếp tục",
+            "tiep tuc",
+            "học nữa",
+            "hoc nua",
+            "tiếp nữa",
+            "tiep nua",
+        )
+        return any(marker in lowered for marker in continue_markers)
+
+    @staticmethod
+    def _context_next_index(learning_context: dict[str, str | None]) -> int:
+        raw = str(learning_context.get("next_index") or "0").strip()
+        try:
+            return max(0, int(raw))
+        except Exception:
+            return 0
 
     async def _detect_and_handle_music_intent(
         self,

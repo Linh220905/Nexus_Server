@@ -56,6 +56,12 @@ class Session:
         self.is_idling = False
         self.last_idle_at: datetime | None = None
         self.aborted = False
+        self.learning_context: dict[str, str | None] = {
+            "mode": None,
+            "topic_id": None,
+            "next_index": "0",
+            "finished": "0",
+        }
 
         self._max_history = config.max_chat_history
 

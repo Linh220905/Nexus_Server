@@ -19,6 +19,7 @@ from app.models import ServerHello, AudioParams
 from app.websocket.session import Session, create_session, remove_session
 from app.robots.crud import get_robot_config, get_robot_by_mac, create_robot, update_robot_status, generate_otp
 from app.database.chat_history import save_chat_session
+from app.database.assignments import get_latest_active_assignment_for_robot
 from app.robots.models import RobotCreate
 
 logger = get_logger(__name__)
@@ -179,10 +180,10 @@ _pipeline_finished_at: dict[str, float] = {}  # Timestamp khi pipeline kết th�
 IDLE_TIMEOUT_FRAMES = 1000  
 LOW_RMS_THRESHOLD_MIN = 700
 LOW_RMS_FRAMES = 90
-HIGH_RMS_THRESHOLD = 3000
+HIGH_RMS_THRESHOLD = 4000
 HIGH_RMS_FRAMES = 5
-POST_HIGH_SILENCE_THRESHOLD = 2300
-POST_HIGH_SILENCE_FRAMES = 20
+POST_HIGH_SILENCE_THRESHOLD = 3000
+POST_HIGH_SILENCE_FRAMES = 15
 COOLDOWN_SECONDS = 1.5  # Bỏ qua audio residual sau khi pipeline xong
 MAX_UTTERANCE_FRAMES = 260  # ~15.6s @ 60ms/frame
 
@@ -551,6 +552,33 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
     async def on_tts_stop() -> None:
         await safe_send_json({"type": "tts", "state": "stop"})
 
+    async def on_learning_card(payload: dict) -> None:
+        image_url = payload.get("image_url")
+        if isinstance(image_url, str) and image_url.startswith("/"):
+            scheme = "https" if ws.url.scheme == "wss" else "http"
+            host = ws.headers.get("host") or ws.url.netloc
+            if host and ":" not in host and not host.startswith("["):
+                host = f"{host}:{config.server.port}"
+            image_url = f"{scheme}://{host}{image_url}"
+
+        logger.info(
+            "[%s] Learning flashcard -> topic=%s word=%s image_url=%s",
+            session.device_id,
+            payload.get("topic_id"),
+            payload.get("word"),
+            image_url,
+        )
+
+        await safe_send_json(
+            {
+                "type": "learning",
+                "state": "flashcard",
+                "word": payload.get("word"),
+                "meaning": payload.get("meaning"),
+                "image_url": image_url,
+            }
+        )
+
     async def on_music_action(payload: dict) -> None:
         intent = payload.get("intent", "other")
         if intent != "music":
@@ -574,6 +602,13 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
             }
         )
 
+    async def assignment_provider() -> dict | None:
+        try:
+            return get_latest_active_assignment_for_robot(session.device_id)
+        except Exception as e:
+            logger.warning("[%s] assignment provider failed: %s", session.device_id, e)
+            return None
+
     # Use robot-specific system prompt if available
     chat_history = session.chat_history
     if robot_config and robot_config.system_prompt:
@@ -585,12 +620,15 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         result = await session.pipeline.process(
             pcm_data,
             chat_history,
+            learning_context=session.learning_context,
             on_stt_result=on_stt_result,
             on_tts_start=on_tts_start,
             on_tts_sentence=on_tts_sentence,
             on_tts_audio=on_tts_audio,
             on_tts_stop=on_tts_stop,
             on_music_action=on_music_action,
+            on_learning_card=on_learning_card,
+            assignment_provider=assignment_provider,
             on_emotion=on_emotion,
             is_aborted=lambda: session.aborted,
         )

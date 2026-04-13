@@ -15,6 +15,7 @@ import datetime
 
 from app.services.llm import LLMService
 from app.prompt_store import INTENT_PROMPT
+from app.services.learning_content import find_topic
 
 logger = get_logger(__name__)
 
@@ -27,6 +28,9 @@ class IntentResult:
     alarm_message: Optional[str] = None
     volume: Optional[int] = None
     brightness: Optional[int] = None
+    learning_mode: Optional[str] = None
+    topic_id: Optional[str] = None
+    assignment_requested: Optional[bool] = None
 
 
 class IntentDetectorService:
@@ -74,6 +78,45 @@ class IntentDetectorService:
                 return IntentResult(intent="set_brightness", brightness=brightness)
 
         # 2. Music intent
+        if any(k in lowered for k in ("hoc tu vung", "học từ vựng", "tu vung", "từ vựng", "hoc tu moi", "học từ mới")):
+            topic = find_topic("vocabulary", lowered)
+            return IntentResult(
+                intent="learning_vocab",
+                learning_mode="vocabulary",
+                topic_id=str(topic.get("id")) if topic else None,
+            )
+
+        if any(k in lowered for k in ("hoi thoai", "hội thoại", "luyen noi", "luyện nói", "giao tiep", "giao tiếp")):
+            topic = find_topic("conversation", lowered)
+            return IntentResult(
+                intent="learning_conversation",
+                learning_mode="conversation",
+                topic_id=str(topic.get("id")) if topic else None,
+            )
+
+        if any(
+            k in lowered
+            for k in (
+                "bài tập",
+                "bai tap",
+                "được giao",
+                "duoc giao",
+                "làm bài",
+                "lam bai",
+                "bai hoc me giao",
+            )
+        ):
+            return IntentResult(intent="assignment", assignment_requested=True)
+
+        for mode in ("vocabulary", "conversation"):
+            topic = find_topic(mode, lowered)
+            if topic:
+                return IntentResult(
+                    intent="learning_topic",
+                    learning_mode=mode,
+                    topic_id=str(topic.get("id")),
+                )
+
         trigger_words = (
             "mở",
             "mơ",
@@ -186,7 +229,7 @@ class IntentDetectorService:
         return IntentResult(intent="music", song_name=song_name)
 
     async def detect(self, user_text: str) -> IntentResult:
-        """Trả về intent và tham số động (music, alarm, set_volume, set_brightness, reboot, other)."""
+        """Trả về intent và tham số động."""
         prompt = INTENT_PROMPT
         data = await self._llm.chat_json(
             user_text,
@@ -219,4 +262,16 @@ class IntentDetectorService:
             return IntentResult(intent="set_brightness", brightness=brightness)
         if intent == "reboot":
             return IntentResult(intent="reboot")
+        if intent == "learning_vocab":
+            topic_id = str(data.get("topic_id", "")).strip() or None
+            return IntentResult(intent="learning_vocab", learning_mode="vocabulary", topic_id=topic_id)
+        if intent == "learning_conversation":
+            topic_id = str(data.get("topic_id", "")).strip() or None
+            return IntentResult(intent="learning_conversation", learning_mode="conversation", topic_id=topic_id)
+        if intent == "learning_topic":
+            learning_mode = str(data.get("learning_mode", "")).strip() or None
+            topic_id = str(data.get("topic_id", "")).strip() or None
+            return IntentResult(intent="learning_topic", learning_mode=learning_mode, topic_id=topic_id)
+        if intent == "assignment":
+            return IntentResult(intent="assignment", assignment_requested=True)
         return IntentResult(intent="other")
