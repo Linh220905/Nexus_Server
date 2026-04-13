@@ -52,10 +52,16 @@ jobs:
         shell: bash
         run: |
           set -e
-          # Support secrets pasted either as real multiline PEM or single-line with \n escapes.
-          SSH_KEY_CONTENT="$(printf '%b' '${{ secrets.SERVER_SSH_KEY }}' | sed 's/\r$//')"
+          # Prefer base64-encoded key (most stable in GitHub Secrets), fallback to raw text secret.
+          SSH_KEY_CONTENT=""
+          if [ -n "${{ secrets.SERVER_SSH_KEY_B64 }}" ]; then
+            SSH_KEY_CONTENT="$(printf '%s' '${{ secrets.SERVER_SSH_KEY_B64 }}' | base64 -d | sed 's/\r$//')"
+          else
+            # Support secrets pasted either as real multiline PEM or single-line with \n escapes.
+            SSH_KEY_CONTENT="$(printf '%b' '${{ secrets.SERVER_SSH_KEY }}' | sed 's/\r$//')"
+          fi
           if [ -z "$SSH_KEY_CONTENT" ]; then
-            echo "SERVER_SSH_KEY is empty" >&2
+            echo "SERVER_SSH_KEY_B64 / SERVER_SSH_KEY is empty" >&2
             exit 1
           fi
           echo "ssh_key<<EOF" >> "$GITHUB_OUTPUT"
