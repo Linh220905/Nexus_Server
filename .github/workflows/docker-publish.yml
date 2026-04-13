@@ -46,7 +46,6 @@ jobs:
   deploy:
     needs: docker
     runs-on: ubuntu-latest
-    if: ${{ secrets.SERVER_HOST != '' && secrets.SERVER_USER != '' && secrets.SERVER_SSH_KEY != '' }}
     steps:
       - name: Deploy on server via SSH
         uses: appleboy/ssh-action@v1.2.0
