@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nexus — Robot Learning Platform</title>
+  <link rel="icon" type="image/png" href="/static/asset/Nexusbot.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -76,7 +77,9 @@
       display: grid; place-items: center; font-size: .9rem;
       box-shadow: 0 2px 8px rgba(232,50,26,0.3);
       color: white; flex-shrink: 0;
+      overflow: hidden;
     }
+    .logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .land-nav-links { display: flex; align-items: center; gap: 2rem; }
     .land-nav-links a {
       font-size: .82rem; font-weight: 600; color: var(--text-2);
@@ -372,7 +375,11 @@
     }
     .close-login-btn:hover { background: var(--border); }
     .login-logo-row { display: flex; align-items: center; gap: .55rem; margin-bottom: 2rem; }
-    .login-logo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+    .login-logo-dot {
+      width: 20px; height: 20px; border-radius: 6px;
+      border: 1px solid var(--border);
+      object-fit: cover; display: block;
+    }
     .login-logo-text { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); }
     .login-form-wrap h3 { font-family: 'Fraunces', serif; font-size: 1.55rem; font-weight: 900; color: var(--text); margin-bottom: .25rem; letter-spacing: -.03em; }
     .login-form-wrap > .sub { font-size: .78rem; color: var(--text-2); margin-bottom: 2rem; font-weight: 500; }
@@ -777,7 +784,7 @@
   <!-- NAV -->
   <nav class="land-nav">
     <div class="land-nav-logo">
-      <div class="logo-icon">🤖</div>
+      <div class="logo-icon"><img src="/static/asset/Nexusbot.png" alt="Nexusbot" /></div>
       Nexus<span class="dot">.</span>
     </div>
     <div class="land-nav-links">
@@ -938,7 +945,7 @@
 
   <footer class="land-footer">
     <div style="display:flex;align-items:center;gap:.6rem;">
-      <div class="logo-icon" style="width:26px;height:26px;border-radius:6px;font-size:.7rem;">🤖</div>
+      <div class="logo-icon" style="width:26px;height:26px;border-radius:6px;font-size:.7rem;"><img src="/static/asset/Nexusbot.png" alt="Nexusbot" /></div>
       <span style="font-family:'Fraunces',serif;font-size:.9rem;font-weight:700;color:rgba(255,255,255,0.6);">Nexus.</span>
     </div>
     <p>© 2025 Nexus Robot Learning Platform. Tất cả quyền được bảo lưu.</p>
@@ -980,7 +987,7 @@
     <div class="login-form-wrap">
       <button class="close-login-btn" onclick="closeLogin()">✕</button>
       <div class="login-logo-row">
-        <div class="login-logo-dot"></div>
+        <img class="login-logo-dot" src="/static/asset/Nexusbot.png" alt="Nexusbot" />
         <span class="login-logo-text">Nexus</span>
       </div>
       <h3>Chào mừng trở lại</h3>
