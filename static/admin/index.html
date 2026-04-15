@@ -489,6 +489,7 @@
     .role-badge { font-size: .55rem; padding: .13rem .42rem; border-radius: 99px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .role-badge.admin  { background: var(--red-soft); color: var(--red); border: 1px solid rgba(232,50,26,0.2); }
     .role-badge.viewer { background: var(--blue-d); color: var(--blue); border: 1px solid rgba(37,99,235,0.2); }
+    .role-badge.user   { background: var(--amber-d); color: var(--amber); border: 1px solid rgba(217,119,6,0.2); }
 
     body.role-viewer .admin-only { display: none !important; }
     body.role-admin .viewer-only { display: none !important; }
@@ -1056,6 +1057,9 @@
     <div class="nav-item admin-only" data-tab="firmware" onclick="switchTab('firmware',this)">
       <span class="nav-icon">⬆</span> Firmware
     </div>
+    <div class="nav-item admin-only" data-tab="users" onclick="switchTab('users',this);loadAdminUsers();">
+      <span class="nav-icon">👥</span> Người dùng
+    </div>
     <div class="nav-item viewer-only" data-tab="claim-robot" onclick="switchTab('claim-robot',this)">
       <span class="nav-icon">🔑</span> Claim Robot
     </div>
@@ -1387,6 +1391,60 @@
       <div id="assignment-list"></div>
     </div>
 
+    <!-- ── User Management ── -->
+    <div class="tab-view admin-only" id="tab-users">
+      <div class="breadcrumb">
+        <a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a>
+        <span class="bc-sep">›</span>
+        <span class="bc-current">Người dùng</span>
+      </div>
+      <div class="topbar">
+        <div>
+          <div class="page-title">👥 Quản lý người dùng</div>
+          <div class="page-sub">Theo dõi tài khoản local và Google đã đăng ký trên hệ thống</div>
+        </div>
+      </div>
+
+      <div class="form-card" style="max-width:980px;margin-bottom:1.5rem;">
+        <div class="form-row">
+          <div class="field">
+            <label>Tìm kiếm</label>
+            <input type="text" id="users-filter-q" placeholder="Email hoặc tên hiển thị" oninput="debouncedLoadAdminUsers()" />
+          </div>
+          <div class="field">
+            <label>Provider</label>
+            <select id="users-filter-provider" onchange="loadAdminUsers()">
+              <option value="all">Tất cả</option>
+              <option value="google">Google</option>
+              <option value="local">Local</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <span class="count-pill" id="user-count">0 users</span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="loadAdminUsers()">🔄 Làm mới</button>
+        </div>
+      </div>
+
+      <div class="form-card" style="max-width:980px;margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.9rem;">
+          <div style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700;letter-spacing:-.02em;color:var(--text);">Thống kê user đăng ký theo ngày</div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <label for="users-chart-days" style="font-size:.72rem;color:var(--text-2);font-weight:700;letter-spacing:.03em;text-transform:uppercase;">Khoảng ngày</label>
+            <select id="users-chart-days" onchange="loadAdminUsers()">
+              <option value="7">7 ngày</option>
+              <option value="14" selected>14 ngày</option>
+              <option value="30">30 ngày</option>
+              <option value="90">90 ngày</option>
+            </select>
+          </div>
+        </div>
+        <div id="users-chart" style="width:100%;min-height:220px;border:1px solid var(--border);border-radius:12px;background:var(--bg3);padding:.75rem;"></div>
+      </div>
+
+      <div id="user-list"></div>
+    </div>
+
   </main>
 </div>
 
@@ -1599,9 +1657,13 @@ document.getElementById('login-overlay').addEventListener('click', e => { if(e.t
 const ROBOT_IMAGE_URL = '/static/asset/Nexusbot.png';
 const API_ROBOTS = '/api/robots/';
 const API_ASSIGNMENTS = '/api/assignments';
+const API_ADMIN_USERS = '/api/admin/users';
 let robots = [], currentUser = null, currentRole = null;
 let learningLoaded = false;
 let assignmentItems = [];
+let adminUsers = [];
+let usersFilterDebounce = null;
+let adminUserRegistrationStats = [];
 
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(icon,msg,type) {
@@ -1647,14 +1709,15 @@ function applyImages() {
 applyImages();
 
 function applyRole(role) {
-  currentRole=role;
+  const normalizedRole = role === 'admin' ? 'admin' : 'viewer';
+  currentRole=normalizedRole;
   document.body.classList.remove('role-admin','role-viewer');
-  document.body.classList.add('role-'+role);
+  document.body.classList.add('role-'+normalizedRole);
   const rt=document.getElementById('sb-role-text');
   const ne=document.getElementById('sb-username');
-  if(rt)rt.textContent=role==='admin'?'Administrator':'Viewer';
+  if(rt)rt.textContent=normalizedRole==='admin'?'Administrator':'Viewer';
   const ex=ne.querySelector('.role-badge');if(ex)ex.remove();
-  ne.insertAdjacentHTML('beforeend',`<span class="role-badge ${role}">${role==='admin'?'Admin':'Viewer'}</span>`);
+  ne.insertAdjacentHTML('beforeend',`<span class="role-badge ${normalizedRole}">${normalizedRole==='admin'?'Admin':'Viewer'}</span>`);
 }
 
 function showApp(email,role) {
@@ -1696,6 +1759,7 @@ function switchTab(tab,el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(el)el.classList.add('active');
+  if(tab==='users' && currentRole==='admin') loadAdminUsers();
 }
 
 async function loadRobots() {
@@ -2110,6 +2174,204 @@ async function deleteAssignment(id) {
     if(res.ok&&data.ok){toast('✓','Đã xóa bài tập','success');await loadAssignments();}
     else toast('✕',data.detail||'Xóa thất bại','error');
   }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
+}
+
+// ═══════════════════ USERS (ADMIN) ═══════════════════
+function debouncedLoadAdminUsers() {
+  clearTimeout(usersFilterDebounce);
+  usersFilterDebounce = setTimeout(() => loadAdminUsers(), 220);
+}
+
+function renderAdminUsers() {
+  const list=document.getElementById('user-list');
+  const badge=document.getElementById('user-count');
+  if(!list || !badge) return;
+  badge.textContent=adminUsers.length+' user'+(adminUsers.length===1?'':'s');
+
+  if(!adminUsers.length){
+    list.innerHTML='<div class="empty-state"><div class="ei">👥</div><h3>Không có người dùng</h3><p>Chưa có tài khoản nào khớp bộ lọc hiện tại.</p></div>';
+    return;
+  }
+
+  list.innerHTML=adminUsers.map((u,idx)=>{
+    const provider=(u.auth_provider||'local').toLowerCase();
+    const role=(u.role||'viewer').toLowerCase();
+    const displayName=u.display_name?esc(u.display_name):'';
+    const providerLabel=provider==='google'?'Google':'Local';
+    const username=esc(u.username||'');
+    const usernameEncoded=encodeURIComponent(u.username||'');
+    const canDelete=currentUser!==u.username;
+    const isGoogle=provider==='google';
+    const providerBg=isGoogle?'var(--blue-d)':'var(--amber-d)';
+    const providerColor=isGoogle?'var(--blue)':'var(--amber)';
+
+    return `<div class="robot-card" style="margin-bottom:1rem;animation-delay:${idx*.04}s;">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+          <div>
+            <div class="card-name" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">${username}<span class="role-badge ${role}">${esc(role)}</span></div>
+            <div style="font-size:.74rem;color:var(--text-2);margin-top:.35rem;line-height:1.6;">${displayName?`Tên hiển thị: ${displayName}<br>`:''}Provider: <span style="background:${providerBg};color:${providerColor};padding:.12rem .45rem;border-radius:99px;font-weight:700;">${providerLabel}</span></div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <select onchange="changeUserRole('${usernameEncoded}', this.value)" ${currentUser===u.username?'disabled':''}>
+              <option value="admin" ${role==='admin'?'selected':''}>admin</option>
+              <option value="viewer" ${role==='viewer'?'selected':''}>viewer</option>
+              <option value="user" ${role==='user'?'selected':''}>user</option>
+            </select>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser('${usernameEncoded}')" ${canDelete?'':'disabled'}>Xóa</button>
+          </div>
+        </div>
+        <div class="card-info" style="grid-template-columns:130px 1fr;margin-top:.9rem;">
+          <span class="card-info-label">Đăng ký</span><span class="card-info-val">${fmtDate(u.created_at)}</span>
+          <span class="card-info-label">Đăng nhập gần nhất</span><span class="card-info-val">${u.last_login_at?fmtDate(u.last_login_at):'—'}</span>
+          <span class="card-info-label">Cập nhật</span><span class="card-info-val">${fmtDate(u.updated_at)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAdminUserChart() {
+  const chartEl = document.getElementById('users-chart');
+  if(!chartEl) return;
+
+  const items = Array.isArray(adminUserRegistrationStats) ? adminUserRegistrationStats : [];
+  if(!items.length){
+    chartEl.innerHTML='<div class="empty-state" style="padding:1.6rem 1rem;"><div class="ei">📈</div><h3>Chưa có dữ liệu thống kê</h3><p>Không có lượt đăng ký trong khoảng thời gian đã chọn.</p></div>';
+    return;
+  }
+
+  const maxCount = Math.max(...items.map(it => Number(it.count || 0)), 1);
+  const barWidth = items.length > 45 ? 7 : 14;
+  const gap = items.length > 45 ? 3 : 6;
+  const chartHeight = 150;
+  const chartWidth = Math.max(620, items.length * (barWidth + gap) + 50);
+
+  const bars = items.map((it, idx) => {
+    const value = Number(it.count || 0);
+    const h = Math.max(2, Math.round((value / maxCount) * (chartHeight - 10)));
+    const x = 28 + idx * (barWidth + gap);
+    const y = chartHeight - h + 8;
+    const d = (it.date || '').slice(5);
+    return `<g>
+      <title>${it.date}: ${value} user</title>
+      <rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="2" fill="${value > 0 ? '#e8321a' : '#d7d2c8'}"></rect>
+      ${(idx % Math.ceil(items.length / 8) === 0 || idx === items.length - 1) ? `<text x="${x + Math.floor(barWidth/2)}" y="${chartHeight + 25}" text-anchor="middle" font-size="10" fill="#6b6558">${d}</text>` : ''}
+    </g>`;
+  }).join('');
+
+  chartEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:.7rem;flex-wrap:wrap;margin-bottom:.45rem;">
+      <div style="font-size:.76rem;color:var(--text-2);font-weight:600;">Tổng user mới: <b style="color:var(--text)">${items.reduce((acc, it) => acc + Number(it.count || 0), 0)}</b></div>
+      <div style="font-size:.72rem;color:var(--text-3);font-weight:600;">Max / ngày: ${maxCount}</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <svg width="${chartWidth}" height="205" role="img" aria-label="Biểu đồ user đăng ký theo ngày">
+        <line x1="22" y1="8" x2="22" y2="${chartHeight + 8}" stroke="#d0c9bc" stroke-width="1"></line>
+        <line x1="22" y1="${chartHeight + 8}" x2="${chartWidth - 10}" y2="${chartHeight + 8}" stroke="#d0c9bc" stroke-width="1"></line>
+        ${bars}
+      </svg>
+    </div>
+  `;
+}
+
+async function loadAdminUserStats() {
+  if(currentRole!=='admin') return;
+  const chartEl = document.getElementById('users-chart');
+  if(chartEl){
+    chartEl.innerHTML='<div style="text-align:center;padding:1.6rem;"><span class="spinner spinner-dark"></span><br><span style="font-size:.78rem;color:var(--text-3);margin-top:.45rem;display:inline-block;">Đang tải biểu đồ…</span></div>';
+  }
+
+  const days = document.getElementById('users-chart-days')?.value || '14';
+  const provider=document.getElementById('users-filter-provider')?.value||'all';
+
+  try {
+    const url = `${API_ADMIN_USERS}/stats/registrations?days=${encodeURIComponent(days)}&provider=${encodeURIComponent(provider)}`;
+    const res = await apiFetch(url);
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){
+      adminUserRegistrationStats = Array.isArray(data.items) ? data.items : [];
+      renderAdminUserChart();
+      return;
+    }
+    adminUserRegistrationStats = [];
+    renderAdminUserChart();
+  } catch(err) {
+    adminUserRegistrationStats = [];
+    renderAdminUserChart();
+    if(err.message!=='Forbidden') toast('✕','Không tải được biểu đồ user theo ngày','error');
+  }
+}
+
+async function loadAdminUsers() {
+  if(currentRole!=='admin') return;
+  const list=document.getElementById('user-list');
+  if(list){
+    list.innerHTML='<div style="text-align:center;padding:2rem;"><span class="spinner spinner-dark"></span><br><span style="font-size:.78rem;color:var(--text-3);margin-top:.5rem;display:inline-block;">Đang tải người dùng…</span></div>';
+  }
+
+  const q=document.getElementById('users-filter-q')?.value?.trim()||'';
+  const provider=document.getElementById('users-filter-provider')?.value||'all';
+
+  try {
+    const url = `${API_ADMIN_USERS}?q=${encodeURIComponent(q)}&provider=${encodeURIComponent(provider)}`;
+    const res = await apiFetch(url);
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){
+      adminUsers=Array.isArray(data.items)?data.items:[];
+      renderAdminUsers();
+      await loadAdminUserStats();
+      return;
+    }
+    adminUsers=[];
+    renderAdminUsers();
+    await loadAdminUserStats();
+    toast('✕',data.detail||'Không thể tải danh sách người dùng','error');
+  } catch(err) {
+    adminUsers=[];
+    renderAdminUsers();
+    await loadAdminUserStats();
+    if(err.message!=='Forbidden') toast('✕','Lỗi kết nối khi tải user','error');
+  }
+}
+
+async function changeUserRole(usernameEncoded, role) {
+  const username = decodeURIComponent(usernameEncoded);
+  try {
+    const res = await apiFetch(`${API_ADMIN_USERS}/${usernameEncoded}/role`, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({role})
+    });
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){
+      toast('✓',`Đã cập nhật role cho ${username}`,'success');
+      await loadAdminUsers();
+    } else {
+      toast('✕',data.detail||'Cập nhật role thất bại','error');
+      await loadAdminUsers();
+    }
+  } catch(err) {
+    if(err.message!=='Forbidden') toast('✕','Lỗi kết nối khi cập nhật role','error');
+    await loadAdminUsers();
+  }
+}
+
+async function deleteUser(usernameEncoded) {
+  const username = decodeURIComponent(usernameEncoded);
+  if(!confirm(`Xóa tài khoản ${username}?`)) return;
+  try {
+    const res = await apiFetch(`${API_ADMIN_USERS}/${usernameEncoded}`, { method:'DELETE' });
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){
+      toast('✓',`Đã xóa user ${username}`,'success');
+      await loadAdminUsers();
+    } else {
+      toast('✕',data.detail||'Xóa user thất bại','error');
+    }
+  } catch(err) {
+    if(err.message!=='Forbidden') toast('✕','Lỗi kết nối khi xóa user','error');
+  }
 }
 
 // Init learning tabs

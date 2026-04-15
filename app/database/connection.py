@@ -28,10 +28,29 @@ def init_database():
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT DEFAULT 'user',
+            auth_provider TEXT DEFAULT 'local',
+            provider_user_id TEXT,
+            display_name TEXT,
+            avatar_url TEXT,
+            last_login_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Migrate legacy users table (older schema may miss these columns)
+    cursor.execute("PRAGMA table_info(users)")
+    user_columns = {row[1] for row in cursor.fetchall()}
+    if "auth_provider" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'local'")
+    if "provider_user_id" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN provider_user_id TEXT")
+    if "display_name" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
+    if "avatar_url" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
+    if "last_login_at" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP")
     
     # Create robots table
     cursor.execute("""
@@ -126,6 +145,8 @@ def init_database():
 
     # Create indexes
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider)")
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider_user_id ON users(auth_provider, provider_user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_robots_owner ON robots(owner_username)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_robot ON chat_sessions(robot_mac)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_session ON chat_sessions(session_id)")

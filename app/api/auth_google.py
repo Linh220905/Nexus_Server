@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import jwt
 from datetime import datetime, timedelta, timezone
 from app.api.session_utils import set_auth_cookie, clear_auth_cookie
+from app.auth.crud import upsert_oauth_user
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 load_dotenv()
@@ -79,9 +80,22 @@ async def google_auth(request: Request):
     if not user:
         raise HTTPException(status_code=400, detail="Google login failed")
 
+    email = user.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account has no email")
+
+    db_user = upsert_oauth_user(
+        username=email,
+        provider="google",
+        provider_user_id=user.get("sub") or user.get("id"),
+        display_name=user.get("name"),
+        avatar_url=user.get("picture"),
+        default_role="viewer",
+    )
+
     session_token = create_session_token(
-        user["email"],
-        role="viewer"
+        email,
+        role=getattr(db_user, "role", "viewer"),
     )
 
     frontend_redirect = os.getenv("FRONTEND_REDIRECT_URI") or str(request.base_url) + "dashboard/"

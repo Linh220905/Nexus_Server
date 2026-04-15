@@ -21,6 +21,7 @@ from .ota_activate import router as ota_activate_router
 from .auth_google import router as auth_google_router, require_viewer
 from .OTA.firmware import router as ota_firmware_router
 from .admin import firmware_router as admin_firmware_router
+from .admin import users_router as admin_users_router
 from app.services.learning_content import get_learning_payload
 from app.database.assignments import (
     create_assignment_for_user,
@@ -110,6 +111,7 @@ router.include_router(ota_activate_router)
 
 router.include_router(ota_firmware_router)
 router.include_router(admin_firmware_router)
+router.include_router(admin_users_router)
 
 
 @router.get("/chat-history")
