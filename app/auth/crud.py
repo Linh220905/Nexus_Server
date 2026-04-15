@@ -106,44 +106,75 @@ def upsert_oauth_user(
     default_role: str = "viewer",
 ) -> UserInDB:
     """Create or update OAuth user and return the current DB row."""
+    normalized_username = (username or "").strip().lower()
+    if not normalized_username:
+        raise ValueError("username is required")
+
+    normalized_provider = (provider or "local").strip().lower()
+    normalized_provider_user_id = (provider_user_id or "").strip() or f"email:{normalized_username}"
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
-        row = None
-        if provider_user_id:
-            cursor.execute(
-                "SELECT username FROM users WHERE auth_provider = ? AND provider_user_id = ?",
-                (provider, provider_user_id),
-            )
-            row = cursor.fetchone()
+        cursor.execute("SELECT username FROM users WHERE username = ?", (normalized_username,))
+        row_by_username = cursor.fetchone()
 
-        if not row:
-            cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
-            row = cursor.fetchone()
+        cursor.execute(
+            "SELECT username FROM users WHERE auth_provider = ? AND provider_user_id = ?",
+            (normalized_provider, normalized_provider_user_id),
+        )
+        row_by_provider_id = cursor.fetchone()
 
-        if row:
-            target_username = row["username"]
-            cursor.execute(
-                """
-                UPDATE users
-                SET username = ?,
-                    auth_provider = ?,
-                    provider_user_id = ?,
-                    display_name = ?,
-                    avatar_url = ?,
-                    last_login_at = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE username = ?
-                """,
-                (
-                    username,
-                    provider,
-                    provider_user_id,
-                    display_name,
-                    avatar_url,
-                    target_username,
-                ),
+        target_username = None
+        if row_by_username:
+            target_username = row_by_username["username"]
+        elif row_by_provider_id:
+            target_username = row_by_provider_id["username"]
+
+        if target_username:
+            # Do not rewrite username on provider-id match to avoid accidental account overwrite.
+            provider_id_belongs_to_target = (
+                not row_by_provider_id or row_by_provider_id["username"] == target_username
             )
+
+            if provider_id_belongs_to_target:
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET auth_provider = ?,
+                        provider_user_id = ?,
+                        display_name = ?,
+                        avatar_url = ?,
+                        last_login_at = CURRENT_TIMESTAMP,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE username = ?
+                    """,
+                    (
+                        normalized_provider,
+                        normalized_provider_user_id,
+                        display_name,
+                        avatar_url,
+                        target_username,
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET auth_provider = ?,
+                        display_name = ?,
+                        avatar_url = ?,
+                        last_login_at = CURRENT_TIMESTAMP,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE username = ?
+                    """,
+                    (
+                        normalized_provider,
+                        display_name,
+                        avatar_url,
+                        target_username,
+                    ),
+                )
         else:
             random_password_hash = get_password_hash(secrets.token_urlsafe(32))
             cursor.execute(
@@ -156,19 +187,20 @@ def upsert_oauth_user(
                 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
                 (
-                    username,
+                    normalized_username,
                     random_password_hash,
                     default_role,
-                    provider,
-                    provider_user_id,
+                    normalized_provider,
+                    normalized_provider_user_id,
                     display_name,
                     avatar_url,
                 ),
             )
+            target_username = normalized_username
 
         conn.commit()
 
-    user = get_user_by_username(username)
+    user = get_user_by_username(target_username or normalized_username)
     if not user:
         raise ValueError("Failed to upsert OAuth user")
     return user

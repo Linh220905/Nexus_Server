@@ -84,10 +84,12 @@ async def google_auth(request: Request):
     if not email:
         raise HTTPException(status_code=400, detail="Google account has no email")
 
+    provider_subject = (user.get("sub") or user.get("id") or f"email:{email}").strip().lower()
+
     db_user = upsert_oauth_user(
         username=email,
         provider="google",
-        provider_user_id=user.get("sub") or user.get("id"),
+        provider_user_id=provider_subject,
         display_name=user.get("name"),
         avatar_url=user.get("picture"),
         default_role="viewer",
