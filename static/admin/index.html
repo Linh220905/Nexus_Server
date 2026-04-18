@@ -1668,6 +1668,7 @@ let assignmentItems = [];
 let adminUsers = [];
 let usersFilterDebounce = null;
 let adminUserRegistrationStats = [];
+let isLoadingRobots = false;
 
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(icon,msg,type) {
@@ -1763,12 +1764,29 @@ function switchTab(tab,el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(el)el.classList.add('active');
+  if(tab==='dashboard') loadRobots();
   if(tab==='users' && currentRole==='admin') loadAdminUsers();
 }
 
 async function loadRobots() {
-  try{const r=await apiFetch(API_ROBOTS);robots=r.ok?await r.json():[];}catch(e){robots=[];}
+  if(isLoadingRobots) return;
+  isLoadingRobots = true;
+  try {
+    const r=await apiFetch(API_ROBOTS);
+    robots=r.ok?await r.json():[];
+  } catch(e) {
+    robots=[];
+  } finally {
+    isLoadingRobots = false;
+  }
   renderDashboard();
+}
+
+function shouldPollRobots() {
+  if(!currentUser) return false;
+  if(document.hidden) return false;
+  const dashboardTab = document.getElementById('tab-dashboard');
+  return !!(dashboardTab && dashboardTab.classList.contains('active'));
 }
 
 async function loadLearningData() {
@@ -2382,7 +2400,7 @@ async function deleteUser(usernameEncoded) {
 renderVocabTopics();
 renderConvTopics();
 
-setInterval(()=>{if(currentUser)loadRobots();},30000);
+setInterval(()=>{if(shouldPollRobots())loadRobots();},60000);
 setInterval(()=>{if(currentUser&&currentRole==='viewer'){const t=document.getElementById('tab-chat-history');if(t&&t.classList.contains('active'))loadChatHistory();}},10000);
 </script>
 </body>
