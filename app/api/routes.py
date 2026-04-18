@@ -177,18 +177,22 @@ async def learning_flashcard(
     if Image is not None and ImageDraw is not None:
         img = Image.new("RGB", (w, h), "#0f172a")
         draw = ImageDraw.Draw(img)
-        panel_margin = max(8, min(w, h) // 18)
-        panel_top = panel_margin
+
+        # ① Margin nhỏ hơn → tận dụng tối đa diện tích màn hình nhỏ
+        panel_margin = max(5, min(w, h) // 28)
+        panel_top    = panel_margin
         panel_bottom = h - panel_margin
-        panel_left = panel_margin
-        panel_right = w - panel_margin
+        panel_left   = panel_margin
+        panel_right  = w - panel_margin
+
         draw.rounded_rectangle(
             (panel_left, panel_top, panel_right, panel_bottom),
-            radius=max(10, min(w, h) // 14),
+            radius=max(8, min(w, h) // 18),
             fill="#fdfdfd",
         )
 
-        split_y = panel_top + int((panel_bottom - panel_top) * 0.54)
+        # ② Chia 50/50 → vùng meaning đủ rộng hơn trên màn 240px
+        split_y = panel_top + int((panel_bottom - panel_top) * 0.50)
         draw.line(
             (panel_left + panel_margin, split_y, panel_right - panel_margin, split_y),
             fill="#e5e7eb",
@@ -235,7 +239,7 @@ async def learning_flashcard(
                     lines.append(cur)
                     cur = token
                 else:
-                    # Single long token; hard cut to keep visibility.
+                    # Single long token – hard-cut để giữ tính hiển thị
                     chunk = ""
                     for ch in token:
                         c2 = chunk + ch
@@ -258,49 +262,47 @@ async def learning_flashcard(
 
             return lines or [raw]
 
-        top_h = max(1, split_y - panel_top - panel_margin)
+        top_h    = max(1, split_y - panel_top - panel_margin)
         bottom_h = max(1, panel_bottom - split_y - panel_margin)
         usable_w = max(1, panel_right - panel_left - panel_margin * 2)
 
+        # ③④ Bắt đầu prefer lớn hơn, ngưỡng fit rộng hơn → word to và rõ
         word_font = _fit_font(
             word_text,
-            prefer=max(94, int(h * 0.58)),
-            min_size=max(46, int(h * 0.26)),
+            prefer=max(100, int(h * 0.64)),
+            min_size=max(38, int(h * 0.20)),
             max_w=usable_w,
-            max_h=int(top_h * 0.92),
+            max_h=int(top_h * 0.96),
             bold=True,
         )
 
-        # Fit meaning as 1-2 lines for better readability on small displays.
-        meaning_font = None
+        # ⑤ Meaning: vòng lặp bắt đầu to hơn, ngưỡng fit 0.94 thay vì 0.90
+        meaning_font: object = None
         meaning_lines: list[str] = [safe_meaning]
-        for size in range(max(72, int(h * 0.40)), max(34, int(h * 0.18)) - 1, -2):
+
+        for size in range(max(64, int(h * 0.42)), max(26, int(h * 0.15)) - 1, -2):
             f = _pick_flashcard_font(size, bold=True)
             lines = _wrap_text_to_width(safe_meaning, f, usable_w, max_lines=2)
             line_heights = []
-            line_widths = []
+            line_widths  = []
             for ln in lines:
                 bb = draw.textbbox((0, 0), ln, font=f)
                 line_heights.append(max(1, bb[3] - bb[1]))
                 line_widths.append(max(1, bb[2] - bb[0]))
             block_h = sum(line_heights) + (max(4, h // 52) if len(lines) > 1 else 0)
-            if line_widths and max(line_widths) <= usable_w and block_h <= int(bottom_h * 0.90):
-                meaning_font = f
+            if line_widths and max(line_widths) <= usable_w and block_h <= int(bottom_h * 0.94):
+                meaning_font  = f
                 meaning_lines = lines
                 break
+
         if meaning_font is None:
-            meaning_font = _pick_flashcard_font(max(34, int(h * 0.18)), bold=True)
+            meaning_font  = _pick_flashcard_font(max(26, int(h * 0.15)), bold=True)
             meaning_lines = _wrap_text_to_width(safe_meaning, meaning_font, usable_w, max_lines=2)
 
+        # --- Vẽ word ---
         word_bbox = draw.textbbox((0, 0), word_text, font=word_font)
-        word_h = max(1, word_bbox[3] - word_bbox[1])
-        y_word = panel_top + max(panel_margin, (top_h - word_h) // 2)
-
-        line_gap = max(4, h // 52)
-        line_metrics = [draw.textbbox((0, 0), ln, font=meaning_font) for ln in meaning_lines]
-        line_heights = [max(1, bb[3] - bb[1]) for bb in line_metrics]
-        block_h = sum(line_heights) + (line_gap if len(meaning_lines) > 1 else 0)
-        y_meaning = split_y + max(panel_margin // 2, (bottom_h - block_h) // 2)
+        word_h    = max(1, word_bbox[3] - word_bbox[1])
+        y_word    = panel_top + max(panel_margin, (top_h - word_h) // 2)
 
         draw.text(
             (_center_x(word_text, word_font), y_word),
@@ -308,6 +310,14 @@ async def learning_flashcard(
             fill="#111827",
             font=word_font,
         )
+
+        # --- Vẽ meaning (có thể 1–2 dòng) ---
+        line_gap     = max(4, h // 52)
+        line_metrics = [draw.textbbox((0, 0), ln, font=meaning_font) for ln in meaning_lines]
+        line_heights = [max(1, bb[3] - bb[1]) for bb in line_metrics]
+        block_h      = sum(line_heights) + (line_gap if len(meaning_lines) > 1 else 0)
+        y_meaning    = split_y + max(panel_margin // 2, (bottom_h - block_h) // 2)
+
         cursor_y = y_meaning
         for i, ln in enumerate(meaning_lines):
             draw.text(
@@ -326,7 +336,7 @@ async def learning_flashcard(
         img.save(output, format="JPEG", quality=q, optimize=True, progressive=False)
         return Response(content=output.getvalue(), media_type="image/jpeg")
 
-    # Fallback when Pillow is unavailable
+    # Fallback khi Pillow không có sẵn
     svg = f"""
 <svg xmlns='http://www.w3.org/2000/svg' width='800' height='480' viewBox='0 0 800 480'>
     <defs>
@@ -348,9 +358,9 @@ async def learning_flashcard(
 async def list_mcp_tools():
     return {
         "tools": [
-            {"name": "set_volume", "description": "Điều chỉnh âm lượng"},
+            {"name": "set_volume",     "description": "Điều chỉnh âm lượng"},
             {"name": "set_brightness", "description": "Điều chỉnh độ sáng"},
-            {"name": "reboot", "description": "Khởi động lại thiết bị"},
+            {"name": "reboot",         "description": "Khởi động lại thiết bị"},
         ]
     }
 
@@ -359,7 +369,7 @@ async def list_mcp_tools():
 async def call_mcp_tool(tool_name: str, params: dict = {}):
     logger.info(f"MCP call: {tool_name} params={params}")
     return {
-        "tool": tool_name,
-        "status": "not_implemented",
+        "tool":    tool_name,
+        "status":  "not_implemented",
         "message": "MCP tool calling chưa được implement.",
     }
