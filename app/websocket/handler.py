@@ -9,6 +9,7 @@ import json
 import struct
 import time
 import asyncio
+import os
 from app.server_logging import get_logger
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -584,11 +585,18 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
     async def on_learning_card(payload: dict) -> None:
         image_url = payload.get("image_url")
         if isinstance(image_url, str) and image_url.startswith("/"):
-            scheme = "https" if ws.url.scheme == "wss" else "http"
-            host = ws.headers.get("host") or ws.url.netloc
-            if host and ":" not in host and not host.startswith("["):
-                host = f"{host}:{config.server.port}"
-            image_url = f"{scheme}://{host}{image_url}"
+            public_http_base = os.getenv("NEXUS_HTTP_BASE_URL", "").strip().rstrip("/")
+            if public_http_base:
+                image_url = f"{public_http_base}{image_url}"
+            else:
+                forwarded_proto = ws.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+                scheme = forwarded_proto or ("https" if ws.url.scheme == "wss" else "http")
+                host = (
+                    ws.headers.get("x-forwarded-host", "").split(",")[0].strip()
+                    or ws.headers.get("host")
+                    or ws.url.netloc
+                )
+                image_url = f"{scheme}://{host}{image_url}"
 
         logger.info(
             "[%s] Learning flashcard -> topic=%s word=%s image_url=%s",
