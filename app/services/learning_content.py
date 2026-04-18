@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Literal
 from urllib.parse import quote
@@ -298,7 +299,7 @@ def _topic_aliases() -> dict[str, list[str]]:
         "work": ["cong viec", "van phong", "phong van"],
         "food": ["am thuc", "nha hang", "do an"],
         "health": ["y te", "benh vien", "suc khoe"],
-        "technology": ["cong nghe", "ky thuat", "it"],
+        "technology": ["cong nghe", "cong nghiep", "ky thuat", "it"],
         "education": ["giao duc", "hoc tap", "truong hoc"],
         "greet": ["chao hoi", "lam quen"],
         "airport": ["san bay"],
@@ -312,12 +313,29 @@ def _topic_aliases() -> dict[str, list[str]]:
 def _find_topic_in_list(topics: list[dict], text: str) -> dict | None:
     cleaned = normalize_text(text)
     aliases = _topic_aliases()
+    best_topic: dict | None = None
+    best_score = 0.0
+
     for topic in topics:
         topic_id = str(topic.get("id", ""))
         name = normalize_text(str(topic.get("name") or topic.get("title") or ""))
         search_terms = [topic_id, name, *aliases.get(topic_id, [])]
         if any(term and term in cleaned for term in search_terms):
             return topic
+
+        # Fuzzy fallback for STT variants (e.g. 'cong nghiep' ~ 'cong nghe').
+        for term in search_terms:
+            term_clean = normalize_text(term)
+            if not term_clean:
+                continue
+            score = SequenceMatcher(None, cleaned, term_clean).ratio()
+            if score > best_score:
+                best_score = score
+                best_topic = topic
+
+    if best_topic is not None and best_score >= 0.62:
+        return best_topic
+
     return None
 
 

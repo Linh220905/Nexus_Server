@@ -100,14 +100,14 @@ class ConversationPipeline:
             fast_intent = self._intent_detector.detect_fast(user_text)
             resolved_intent = fast_intent
 
-            # Hybrid fallback: keep rule-based fast path, but use LLM intent when
-            # user sounds like asking for learning/topic and fast rules miss.
-            if (
-                fast_intent.intent == "other"
-                and self._looks_like_learning_request(user_text)
-            ):
+            # Ưu tiên LLM cho learning intent (chấp nhận chậm hơn) để chịu lỗi STT tốt hơn.
+            if self._looks_like_learning_request(user_text) or fast_intent.intent in {
+                "learning_vocab",
+                "learning_conversation",
+                "learning_topic",
+            }:
                 try:
-                    llm_intent = await self._intent_detector.detect(user_text)
+                    llm_intent = await self._intent_detector.detect_learning_intent(user_text)
                     if llm_intent.intent in {"learning_vocab", "learning_conversation", "learning_topic"}:
                         resolved_intent = llm_intent
                 except Exception as e:

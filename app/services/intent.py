@@ -9,15 +9,24 @@ from __future__ import annotations
 
 from app.server_logging import get_logger
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Optional
 import datetime
 
 from app.services.llm import LLMService
-from app.prompt_store import INTENT_PROMPT
+from app.prompt_store import INTENT_PROMPT, LEARNING_INTENT_PROMPT
 from app.services.learning_content import find_topic
 
 logger = get_logger(__name__)
+
+
+def _normalize_vi_text(text: str) -> str:
+    lowered = (text or "").strip().lower()
+    normalized = unicodedata.normalize("NFD", lowered)
+    without_marks = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    without_marks = without_marks.replace("đ", "d")
+    return re.sub(r"\s+", " ", without_marks).strip()
 
 
 @dataclass(slots=True)
@@ -43,6 +52,7 @@ class IntentDetectorService:
         """Detect nhanh bằng rule-based."""
         text = (user_text or "").strip()
         lowered = text.lower()
+        normalized = _normalize_vi_text(text)
 
         # 1. Volume/Brightness intent
         # Regex: tăng/giảm âm lượng/độ sáng (lên|xuống)? (xx%)?
@@ -79,29 +89,28 @@ class IntentDetectorService:
 
         # 2. Music intent
         if any(
-            k in lowered
+            k in normalized
             for k in (
                 "hoc tu vung",
-                "học từ vựng",
                 "tu vung",
-                "từ vựng",
                 "hoc tu moi",
-                "học từ mới",
                 "hoc tu vat",
-                "học từ vật",
                 "tu vat",
-                "từ vật",
+                "hoc tu van",
+                "tu van",
+                "hoc tu vuong",
+                "hoc chu de",
             )
         ):
-            topic = find_topic("vocabulary", lowered)
+            topic = find_topic("vocabulary", normalized)
             return IntentResult(
                 intent="learning_vocab",
                 learning_mode="vocabulary",
                 topic_id=str(topic.get("id")) if topic else None,
             )
 
-        if any(k in lowered for k in ("hoi thoai", "hội thoại", "luyen noi", "luyện nói", "giao tiep", "giao tiếp")):
-            topic = find_topic("conversation", lowered)
+        if any(k in normalized for k in ("hoi thoai", "luyen noi", "giao tiep")):
+            topic = find_topic("conversation", normalized)
             return IntentResult(
                 intent="learning_conversation",
                 learning_mode="conversation",
@@ -123,7 +132,7 @@ class IntentDetectorService:
             return IntentResult(intent="assignment", assignment_requested=True)
 
         for mode in ("vocabulary", "conversation"):
-            topic = find_topic(mode, lowered)
+            topic = find_topic(mode, normalized)
             if topic:
                 return IntentResult(
                     intent="learning_topic",
@@ -288,4 +297,46 @@ class IntentDetectorService:
             return IntentResult(intent="learning_topic", learning_mode=learning_mode, topic_id=topic_id)
         if intent == "assignment":
             return IntentResult(intent="assignment", assignment_requested=True)
+        return IntentResult(intent="other")
+
+    async def detect_learning_intent(self, user_text: str) -> IntentResult:
+        """Detect learning intent bằng LLM chuyên biệt để tăng độ bền với STT lỗi nhẹ."""
+        data = await self._llm.chat_json(
+            user_text,
+            system_prompt=LEARNING_INTENT_PROMPT,
+            max_tokens=160,
+            temperature=0.0,
+        )
+        if not isinstance(data, dict):
+            return IntentResult(intent="other")
+
+        intent = str(data.get("intent", "other")).strip().lower()
+        learning_mode = str(data.get("learning_mode", "")).strip().lower() or None
+        topic_id = str(data.get("topic_id", "")).strip().lower() or None
+        topic_name = str(data.get("topic_name", "")).strip()
+
+        if learning_mode not in {None, "vocabulary", "conversation"}:
+            learning_mode = None
+
+        if topic_id is None:
+            # Cho phép LLM trả topic_name thay vì topic_id và tự map lại phía server.
+            if learning_mode in {"vocabulary", "conversation"} and topic_name:
+                topic = find_topic(learning_mode, topic_name)
+                if topic:
+                    topic_id = str(topic.get("id") or "").strip().lower() or None
+            if topic_id is None and learning_mode in {"vocabulary", "conversation"}:
+                topic = find_topic(learning_mode, user_text)
+                if topic:
+                    topic_id = str(topic.get("id") or "").strip().lower() or None
+
+        if intent == "learning_vocab":
+            return IntentResult(intent="learning_vocab", learning_mode="vocabulary", topic_id=topic_id)
+        if intent == "learning_conversation":
+            return IntentResult(intent="learning_conversation", learning_mode="conversation", topic_id=topic_id)
+        if intent == "learning_topic":
+            # Nếu LLM quên mode nhưng có topic thì mặc định vocabulary cho luồng học từ vựng.
+            if learning_mode not in {"vocabulary", "conversation"}:
+                learning_mode = "vocabulary"
+            return IntentResult(intent="learning_topic", learning_mode=learning_mode, topic_id=topic_id)
+
         return IntentResult(intent="other")

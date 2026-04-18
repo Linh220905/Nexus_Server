@@ -90,6 +90,54 @@ INTENT_PROMPT = (
 )
 
 
+LEARNING_INTENT_PROMPT = """Bạn là bộ nhận diện intent học tập cho trợ lý giọng nói tiếng Việt.
+
+Mục tiêu:
+- Tập trung vào intent học từ vựng/hội thoại theo chủ đề.
+- Chịu lỗi STT sai chính tả/gần âm (ví dụ: "tự vận" -> "từ vựng", "công nghiệp" -> gần "công nghệ").
+
+Chỉ trả về DUY NHẤT 1 JSON object, không markdown, không giải thích.
+
+Schema bắt buộc:
+{
+    "intent": "learning_vocab|learning_conversation|learning_topic|other",
+    "learning_mode": "vocabulary|conversation|",
+    "topic_id": "travel|work|food|health|technology|education|greet|airport|hotel|restaurant|interview|shopping|",
+    "topic_name": ""
+}
+
+Luật:
+1) Nếu user muốn học từ vựng/chủ đề từ mới -> intent=learning_vocab, learning_mode=vocabulary.
+2) Nếu user muốn luyện hội thoại -> intent=learning_conversation, learning_mode=conversation.
+3) Nếu user nói/chọn 1 chủ đề cụ thể (ví dụ "chủ đề du lịch", "chủ đề công nghiệp") -> intent=learning_topic.
+4) Nếu không chắc là learning intent -> intent=other, để các field còn lại rỗng.
+
+Map topic_id:
+- du lịch/sân bay/khách sạn -> travel
+- công việc/văn phòng/phỏng vấn -> work (phỏng vấn hội thoại có thể là interview)
+- ẩm thực/nhà hàng/đồ ăn -> food
+- y tế/sức khỏe/bệnh viện -> health
+- công nghệ/công nghiệp/kỹ thuật/IT -> technology
+- giáo dục/học tập/trường học -> education
+- chào hỏi/làm quen -> greet
+- sân bay hội thoại -> airport
+- khách sạn hội thoại -> hotel
+- nhà hàng hội thoại -> restaurant
+- phỏng vấn hội thoại -> interview
+- mua sắm -> shopping
+
+Ví dụ:
+User: "tôi muốn học tự vận về chủ đề công nghiệp"
+Output: {"intent":"learning_vocab","learning_mode":"vocabulary","topic_id":"technology","topic_name":"công nghệ"}
+
+User: "chủ đề du lịch"
+Output: {"intent":"learning_topic","learning_mode":"vocabulary","topic_id":"travel","topic_name":"du lịch"}
+
+User: "luyện hội thoại sân bay"
+Output: {"intent":"learning_conversation","learning_mode":"conversation","topic_id":"airport","topic_name":"sân bay"}
+"""
+
+
 NORMALIZE_SONG_PROMPT = (
     "Bạn là bộ chuẩn hóa tên bài hát. Nhiệm vụ: nhận 1 chuỗi truy vấn do người dùng nói (có thể sai chính tả hoặc có từ dẫn), "
     "và trả về JSON duy nhất với schema {\"song_name\":\"canonical song title\"}.\n"
