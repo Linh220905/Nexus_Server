@@ -175,57 +175,85 @@ async def learning_flashcard(
     safe_meaning = (meaning or "Nghia")[:60]
 
     if Image is not None and ImageDraw is not None:
-        img = Image.new("RGB", (w, h), "#121826")
+        img = Image.new("RGB", (w, h), "#0f172a")
         draw = ImageDraw.Draw(img)
-        panel_margin = max(10, w // 24)
+        panel_margin = max(8, min(w, h) // 18)
+        panel_top = panel_margin
+        panel_bottom = h - panel_margin
+        panel_left = panel_margin
+        panel_right = w - panel_margin
         draw.rounded_rectangle(
-            (panel_margin, panel_margin, w - panel_margin, h - panel_margin),
-            radius=max(10, w // 28),
-            fill="#f8fafc",
+            (panel_left, panel_top, panel_right, panel_bottom),
+            radius=max(10, min(w, h) // 14),
+            fill="#fdfdfd",
         )
 
-        meaning_font = _pick_flashcard_font(max(24, h // 7), bold=True)
+        split_y = panel_top + int((panel_bottom - panel_top) * 0.58)
+        draw.line(
+            (panel_left + panel_margin, split_y, panel_right - panel_margin, split_y),
+            fill="#e5e7eb",
+            width=max(1, min(w, h) // 180),
+        )
 
         def _center_x(text: str, font_obj) -> int:
             bbox = draw.textbbox((0, 0), text, font=font_obj)
             tw = max(1, bbox[2] - bbox[0])
-            return int(max(panel_margin * 2, (w - tw) // 2))
+            return int(max(panel_left + panel_margin, (w - tw) // 2))
 
         word_text = safe_word.upper()
 
-        def _fit_font(text: str, prefer: int, min_size: int, bold: bool = True):
+        def _fit_font(text: str, prefer: int, min_size: int, max_w: int, max_h: int, bold: bool = True):
             size = prefer
-            max_w = w - panel_margin * 4
             while size >= min_size:
                 f = _pick_flashcard_font(size, bold=bold)
                 bbox = draw.textbbox((0, 0), text, font=f)
                 tw = max(1, bbox[2] - bbox[0])
-                if tw <= max_w:
+                th = max(1, bbox[3] - bbox[1])
+                if tw <= max_w and th <= max_h:
                     return f
                 size -= 2
             return _pick_flashcard_font(min_size, bold=bold)
 
-        word_font = _fit_font(word_text, prefer=max(60, (h * 2) // 5), min_size=max(34, h // 6), bold=True)
-        meaning_font = _fit_font(safe_meaning, prefer=max(38, h // 4), min_size=max(24, h // 10), bold=True)
+        top_h = max(1, split_y - panel_top - panel_margin)
+        bottom_h = max(1, panel_bottom - split_y - panel_margin)
+        usable_w = max(1, panel_right - panel_left - panel_margin * 2)
 
-        y_word = max(panel_margin * 3, h // 2 - h // 5)
-        y_meaning = min(h - panel_margin * 4, y_word + h // 3 - panel_margin)
+        word_font = _fit_font(
+            word_text,
+            prefer=max(42, int(h * 0.24)),
+            min_size=max(24, int(h * 0.12)),
+            max_w=usable_w,
+            max_h=int(top_h * 0.78),
+            bold=True,
+        )
+        meaning_font = _fit_font(
+            safe_meaning,
+            prefer=max(30, int(h * 0.16)),
+            min_size=max(18, int(h * 0.09)),
+            max_w=usable_w,
+            max_h=int(bottom_h * 0.68),
+            bold=True,
+        )
+
+        word_bbox = draw.textbbox((0, 0), word_text, font=word_font)
+        word_h = max(1, word_bbox[3] - word_bbox[1])
+        y_word = panel_top + max(panel_margin, (top_h - word_h) // 2)
+
+        meaning_bbox = draw.textbbox((0, 0), safe_meaning, font=meaning_font)
+        meaning_h = max(1, meaning_bbox[3] - meaning_bbox[1])
+        y_meaning = split_y + max(panel_margin // 2, (bottom_h - meaning_h) // 2)
 
         draw.text(
             (_center_x(word_text, word_font), y_word),
             word_text,
-            fill="#000000",
+            fill="#111827",
             font=word_font,
-            stroke_width=max(2, h // 120),
-            stroke_fill="#000000",
         )
         draw.text(
             (_center_x(safe_meaning, meaning_font), y_meaning),
             safe_meaning,
-            fill="#000000",
+            fill="#0f172a",
             font=meaning_font,
-            stroke_width=max(1, h // 160),
-            stroke_fill="#000000",
         )
 
         output = BytesIO()

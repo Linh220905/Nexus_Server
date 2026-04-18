@@ -140,7 +140,7 @@ def build_flashcard_image_url(topic_id: str, word: str, meaning: str) -> str:
     return (
         f"{FLASHCARD_BASE_PATH}?topic_id={quote(topic_id)}"
         f"&word={quote(word)}&meaning={quote(meaning)}"
-        "&fmt=png&w=320&h=240"
+        "&fmt=png"
     )
 
 
