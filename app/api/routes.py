@@ -171,8 +171,14 @@ async def learning_flashcard(
         q: int = Query(38, ge=20, le=85),
         fmt: str = Query("png"),
 ):
-    safe_word = (word or "Word")[:40]
-    safe_meaning = (meaning or "Nghia")[:60]
+    is_small_card = w <= 360 and h <= 280
+    if is_small_card:
+        # Ưu tiên cỡ chữ thật lớn trên màn 320x240.
+        safe_word = (word or "Word")[:22]
+        safe_meaning = (meaning or "Nghia")[:26]
+    else:
+        safe_word = (word or "Word")[:40]
+        safe_meaning = (meaning or "Nghia")[:60]
 
     if Image is not None and ImageDraw is not None:
         img = Image.new("RGB", (w, h), "#0f172a")
@@ -192,7 +198,8 @@ async def learning_flashcard(
         )
 
         # ② Chia 50/50 → vùng meaning đủ rộng hơn trên màn 240px
-        split_y = panel_top + int((panel_bottom - panel_top) * 0.50)
+        split_ratio = 0.62 if is_small_card else 0.50
+        split_y = panel_top + int((panel_bottom - panel_top) * split_ratio)
         draw.line(
             (panel_left + panel_margin, split_y, panel_right - panel_margin, split_y),
             fill="#e5e7eb",
@@ -280,9 +287,10 @@ async def learning_flashcard(
         meaning_font: object = None
         meaning_lines: list[str] = [safe_meaning]
 
+        meaning_max_lines = 1 if is_small_card else 2
         for size in range(max(64, int(h * 0.42)), max(26, int(h * 0.15)) - 1, -2):
             f = _pick_flashcard_font(size, bold=True)
-            lines = _wrap_text_to_width(safe_meaning, f, usable_w, max_lines=2)
+            lines = _wrap_text_to_width(safe_meaning, f, usable_w, max_lines=meaning_max_lines)
             line_heights = []
             line_widths  = []
             for ln in lines:
@@ -297,7 +305,7 @@ async def learning_flashcard(
 
         if meaning_font is None:
             meaning_font  = _pick_flashcard_font(max(26, int(h * 0.15)), bold=True)
-            meaning_lines = _wrap_text_to_width(safe_meaning, meaning_font, usable_w, max_lines=2)
+            meaning_lines = _wrap_text_to_width(safe_meaning, meaning_font, usable_w, max_lines=meaning_max_lines)
 
         # --- Vẽ word ---
         word_bbox = draw.textbbox((0, 0), word_text, font=word_font)
