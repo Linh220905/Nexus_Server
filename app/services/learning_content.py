@@ -299,7 +299,7 @@ def _topic_aliases() -> dict[str, list[str]]:
         "work": ["cong viec", "van phong", "phong van"],
         "food": ["am thuc", "nha hang", "do an"],
         "health": ["y te", "benh vien", "suc khoe"],
-        "technology": ["cong nghe", "cong nghiep", "ky thuat", "it"],
+        "technology": ["cong nghe", "cong nghiep", "ky thuat", "chu de it", "linh vuc it", "nganh it"],
         "education": ["giao duc", "hoc tap", "truong hoc"],
         "greet": ["chao hoi", "lam quen"],
         "airport": ["san bay"],
