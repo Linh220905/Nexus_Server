@@ -8,19 +8,28 @@ from typing import Literal
 from urllib.parse import quote
 
 from app.database.connection import get_db_connection
+from app.server_logging import get_logger
 
 LearningMode = Literal["vocabulary", "conversation"]
 FLASHCARD_BASE_PATH = "/api/learning/flashcard"
-DEFAULT_VOCAB_SEED_PATH = Path(__file__).parent.parent / "data" / "default_vocab_topics.json"
+DEFAULT_VOCAB_SEED_PATHS = [
+    Path(__file__).parent.parent / "seeds" / "default_vocab_topics.json",
+    Path(__file__).parent.parent / "data" / "default_vocab_topics.json",
+]
+_default_seed_checked = False
+logger = get_logger(__name__)
 
 def _load_default_vocab_topics() -> list[dict]:
-    if not DEFAULT_VOCAB_SEED_PATH.exists():
-        return []
-    try:
-        data = json.loads(DEFAULT_VOCAB_SEED_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-    return data if isinstance(data, list) else []
+    for seed_path in DEFAULT_VOCAB_SEED_PATHS:
+        if not seed_path.exists():
+            continue
+        try:
+            data = json.loads(seed_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, list) and data:
+            return data
+    return []
 
 
 CONVERSATION_TOPICS: list[dict] = [
@@ -135,16 +144,25 @@ def build_flashcard_image_url(topic_id: str, word: str, meaning: str) -> str:
 
 
 def _seed_default_vocab_if_empty() -> None:
+    global _default_seed_checked
+    if _default_seed_checked:
+        return
+
+    default_topics = _load_default_vocab_topics()
+    if not default_topics:
+        logger.warning("Vocabulary seed file not found or empty; skip default seeding")
+        _default_seed_checked = True
+        return
+
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(1) AS n FROM vocab_topics")
-        row = cur.fetchone()
-        total_topics = int(row["n"] if row and "n" in row.keys() else 0)
-        if total_topics > 0:
-            return
-
-        for topic in _load_default_vocab_topics():
+        seeded_topics = 0
+        seeded_words = 0
+        for topic in default_topics:
             topic_id = str(topic.get("id") or "").strip()
+            if not topic_id:
+                continue
+
             cur.execute(
                 """INSERT OR IGNORE INTO vocab_topics
                    (topic_id, icon, name, level, category, count)
@@ -159,19 +177,60 @@ def _seed_default_vocab_if_empty() -> None:
                 ),
             )
 
+            cur.execute(
+                """UPDATE vocab_topics
+                   SET icon = COALESCE(NULLIF(?, ''), icon),
+                       name = COALESCE(NULLIF(?, ''), name),
+                       level = COALESCE(NULLIF(?, ''), level),
+                       category = COALESCE(NULLIF(?, ''), category),
+                       updated_at = CURRENT_TIMESTAMP
+                   WHERE topic_id = ?""",
+                (
+                    str(topic.get("icon") or ""),
+                    str(topic.get("name") or ""),
+                    str(topic.get("level") or topic.get("category") or "beginner"),
+                    str(topic.get("category") or topic.get("level") or "beginner"),
+                    topic_id,
+                ),
+            )
+
             for idx, item in enumerate(topic.get("words") or [], start=1):
                 word = str(item.get("word") or "").strip()
                 meaning = str(item.get("meaning") or "").strip()
                 if not word or not meaning:
                     continue
                 custom_image_url = str(item.get("image_url") or "").strip() or None
+
+                cur.execute(
+                    """SELECT 1 FROM vocab_words
+                       WHERE topic_id = ? AND lower(word) = lower(?) AND lower(meaning) = lower(?)
+                       LIMIT 1""",
+                    (topic_id, word, meaning),
+                )
+                existed = cur.fetchone()
+                if existed:
+                    continue
+
                 cur.execute(
                     """INSERT INTO vocab_words
                        (topic_id, word, meaning, image_url, sort_order)
                        VALUES (?, ?, ?, ?, ?)""",
                     (topic_id, word, meaning, custom_image_url, idx),
                 )
+                seeded_words += 1
+
+            cur.execute("SELECT COUNT(1) AS n FROM vocab_words WHERE topic_id = ?", (topic_id,))
+            row = cur.fetchone()
+            topic_count = int(row["n"] if row and "n" in row.keys() else 0)
+            cur.execute(
+                "UPDATE vocab_topics SET count = ?, updated_at = CURRENT_TIMESTAMP WHERE topic_id = ?",
+                (topic_count, topic_id),
+            )
+            seeded_topics += 1
         conn.commit()
+
+    logger.info("Vocabulary seed check complete: topics=%s, inserted_words=%s", seeded_topics, seeded_words)
+    _default_seed_checked = True
 
 
 def _build_vocab_topics_with_images() -> list[dict]:
