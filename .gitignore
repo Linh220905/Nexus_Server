@@ -9,8 +9,6 @@ models/
 app/data/*.db
 !app/data/default_vocab_topics.json
 app/mcp/alarms.json
-static/asset/*
-!static/asset/Nexusbot.png
 flow.png
 app/mcp/BaoThuc.mp3
 app/mcp/default_ringtone.wav
