@@ -12,6 +12,7 @@ from app.api.ota import router as ota_router
 from app.api.ota_activate import router as ota_activate_router
 from app.api.auth_google import router as auth_google_router
 from app.api.auth import router as auth_local_router
+from app.api.orders import router as orders_router
 from app.websocket.handler import handle_client
 from app.mcp.alarm_scheduler import start_scheduler
 from app.database.connection import init_database
@@ -44,6 +45,7 @@ app.include_router(ota_router)
 app.include_router(ota_activate_router)
 app.include_router(auth_google_router)
 app.include_router(auth_local_router)
+app.include_router(orders_router)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

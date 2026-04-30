@@ -155,6 +155,24 @@ def init_database():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_vocab_topics_topic_id ON vocab_topics(topic_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_vocab_words_topic_id ON vocab_words(topic_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_vocab_words_sort ON vocab_words(topic_id, sort_order)")
+
+    # Orders table – customer pre-orders from landing page
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT,
+            address TEXT,
+            package TEXT DEFAULT 'starter',
+            note TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC)")
     
     # Insert default admin user if not exists, lấy từ biến môi trường nếu có
     import os
