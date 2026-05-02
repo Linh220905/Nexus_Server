@@ -22,7 +22,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 logger = get_logger(__name__)
 
 

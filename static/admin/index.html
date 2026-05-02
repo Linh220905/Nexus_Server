@@ -1848,7 +1848,7 @@ if(ffm)ffm.addEventListener('submit',async function(e){
   e.preventDefault();const fi=document.getElementById('firmware-file'),rd=document.getElementById('firmware-upload-result'),btn=document.getElementById('firmware-upload-btn');
   if(!fi.files.length)return;btn.innerHTML='<span class="spinner"></span> Uploading…';btn.disabled=true;rd.style.display='none';
   const fd=new FormData();fd.append('file',fi.files[0]);fd.append('version',document.getElementById('firmware-version').value.trim());fd.append('note',document.getElementById('firmware-note').value.trim());
-  try{const res=await fetch('/api/OTA/upload',{method:'POST',body:fd,credentials:'include'});const d=await res.json();
+  try{const res=await fetch('/api/OTA/upload_firmware',{method:'POST',body:fd,credentials:'include'});const d=await res.json();
     if(res.ok&&d.success){toast('✓','Upload thành công!','success');rd.innerHTML=`<div style="color:var(--green);font-size:.83rem;font-weight:600;padding:.75rem;background:var(--green-d);border-radius:var(--r-xs);">✅ Đã upload: <a href="${d.url}" target="_blank" style="color:var(--green);">${d.filename}</a></div>`;rd.style.display='block';ffm.reset();}
     else{toast('✕',d.detail||'Upload thất bại','error');rd.innerHTML=`<div style="color:var(--red);font-size:.83rem;font-weight:600;padding:.75rem;background:var(--red-soft);border-radius:var(--r-xs);">❌ ${d.detail||'Upload thất bại'}</div>`;rd.style.display='block';}
   }catch(err){toast('✕','Lỗi kết nối','error');}

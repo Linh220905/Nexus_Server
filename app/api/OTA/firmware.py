@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from fastapi.responses import JSONResponse
 from app.auth.security import check_admin_role
 from pathlib import Path
@@ -36,17 +36,23 @@ def _binary_contains_version(path: Path, version: str) -> bool:
 @router.post("/upload_firmware", summary="Admin upload firmware file", response_class=JSONResponse)
 async def upload_firmware(
     file: UploadFile = File(...),
+    version: str = Form(...),
+    note: str | None = Form(default=None),
     current_admin=Depends(check_admin_role)
 ):
     filename = file.filename or ""
     if not filename.endswith(".bin"):
         raise HTTPException(status_code=400, detail="Chỉ chấp nhận file .bin")
 
-    expected_version = _extract_version_from_filename(filename)
-    if not expected_version:
-        raise HTTPException(status_code=400, detail="Tên firmware phải bắt đầu bằng version dạng x.y.z")
+    expected_version = (version or "").strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", expected_version):
+        raise HTTPException(status_code=400, detail="Version phải đúng định dạng x.y.z")
 
-    dest = FIRMWARE_DIR / filename
+    safe_name = Path(filename).name
+    if not safe_name.endswith(".bin"):
+        safe_name = "firmware.bin"
+    dest_name = f"{expected_version}_{safe_name}"
+    dest = FIRMWARE_DIR / dest_name
     with dest.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -64,4 +70,5 @@ async def upload_firmware(
         )
 
     # TODO: Lưu metadata vào database
-    return {"success": True, "filename": filename, "url": f"/static/firmware/{filename}"}
+    _ = note
+    return {"success": True, "filename": dest_name, "url": f"/static/firmware/{dest_name}"}
