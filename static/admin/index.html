@@ -282,41 +282,6 @@
     .about-item-text h4 { font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .22rem; letter-spacing: -.02em; }
     .about-item-text p { font-size: .8rem; color: var(--text-2); line-height: 1.7; font-weight: 500; }
 
-    /* ══════════════════ DEMO ══════════════════ */
-    .demo-section { padding: 7rem 3rem; background: var(--bg3); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-    .demo-inner { max-width: 1200px; margin: 0 auto; text-align: center; }
-    .demo-video-wrap {
-      margin-top: 3rem; position: relative;
-      max-width: 800px; margin-left: auto; margin-right: auto;
-      border-radius: 20px; overflow: hidden;
-      background: #1a1814; border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: var(--shadow-lg); aspect-ratio: 16/9;
-    }
-    .demo-video-wrap video, .demo-video-wrap iframe { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .demo-video-placeholder {
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 1rem; cursor: pointer;
-      background: linear-gradient(145deg, #1a1814 0%, #2a2620 100%);
-      position: relative;
-    }
-    .demo-video-placeholder::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: linear-gradient(rgba(255,255,255,.02)1px,transparent 1px),
-                        linear-gradient(90deg,rgba(255,255,255,.02)1px,transparent 1px);
-      background-size: 32px 32px;
-    }
-    .demo-play-btn {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: var(--red); border: none;
-      display: grid; place-items: center;
-      box-shadow: 0 4px 24px rgba(232,50,26,0.4), 0 0 0 12px rgba(232,50,26,0.12);
-      cursor: pointer; transition: all .2s; position: relative; z-index: 1;
-    }
-    .demo-play-btn:hover { transform: scale(1.08); box-shadow: 0 8px 32px rgba(232,50,26,0.5), 0 0 0 16px rgba(232,50,26,0.16); }
-    .demo-play-btn svg { width: 28px; height: 28px; fill: #fff; margin-left: 3px; }
-    .demo-video-placeholder .demo-label { font-size: .78rem; color: rgba(255,255,255,0.45); font-weight: 600; letter-spacing: .05em; position: relative; z-index: 1; }
-
     /* ══════════════════ FEATURES ══════════════════ */
     .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3.5rem; }
     .feat-card {
@@ -799,7 +764,6 @@
     </a>
     <div class="land-nav-links">
       <a onclick="smoothScroll('#about')">Sản phẩm</a>
-      <a onclick="smoothScroll('#demo')">Demo</a>
       <a onclick="smoothScroll('#features')">Tính năng</a>
       <a onclick="smoothScroll('#tech')">Công nghệ</a>
       <a onclick="smoothScroll('#faq')">FAQ</a>
@@ -916,18 +880,6 @@
     </div>
   </section>
 
-  <!-- DEMO -->
-  <section class="demo-section" id="demo">
-    <div class="demo-inner">
-      <div class="section-eyebrow">Demo sản phẩm</div>
-      <h2 class="section-heading">Xem Nexus trong hành động</h2>
-      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Hãy xem cách Nexus tương tác với trẻ em — từ hội thoại tiếng Anh, luyện phát âm đến trò chơi học tập thú vị.</p>
-      <div class="demo-video-wrap" id="demo-video-wrap">
-        <video src="/static/asset/demo.mp4" controls playsinline preload="metadata"></video>
-      </div>
-    </div>
-  </section>
-
   <!-- FEATURES -->
   <div class="section-wrap" id="features" style="position:relative;z-index:10;">
     <div class="section-eyebrow">Tính năng nổi bật</div>
@@ -970,7 +922,7 @@
         <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Nexus có phù hợp với con tôi không? Bé bao nhiêu tuổi thì dùng được?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Nexus được thiết kế phù hợp với trẻ từ 4–12 tuổi. Hệ thống có thể điều chỉnh ngôn ngữ và độ khó theo trình độ — từ hoàn toàn Tiếng Việt cho bé mới bắt đầu, đến hoàn toàn Tiếng Anh cho bé đã có nền tảng tốt.</p></div></div>
         <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Có phí sử dụng hàng tháng không?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Giá mua Nexus đã bao gồm các tính năng cơ bản. Nếu bạn muốn trải nghiệm nâng cao như cập nhật nội dung liên tục, tính năng AI thông minh hơn, sẽ có gói dịch vụ AI hàng tháng tùy chọn với mức giá phải chăng.</p></div></div>
         <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Cha mẹ có thể kiểm soát nội dung bé trò chuyện với Nexus không?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Có. Phụ huynh hoàn toàn kiểm soát được nội dung học qua ứng dụng quản lý: chọn chủ đề hội thoại, giao bài tập, đặt giới hạn thời gian và xem lại toàn bộ lịch sử trò chuyện của bé với Nexus.</p></div></div>
-        <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Bảo hành và hỗ trợ kỹ thuật như thế nào?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Nexus được bảo hành phần cứng 12 tháng kể từ ngày mua. Hỗ trợ kỹ thuật miễn phí qua email và chat trong suốt thời gian sở hữu.</p></div></div>
+        <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Bảo hành và hỗ trợ kỹ thuật như thế nào?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Nexus được bảo hành phần cứng 3 tháng kể từ ngày mua. Hỗ trợ kỹ thuật miễn phí qua email và chat trong suốt thời gian sở hữu.</p></div></div>
         <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Dữ liệu và quyền riêng tư của bé có được bảo vệ không?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Bảo mật và quyền riêng tư của trẻ là ưu tiên hàng đầu. Tất cả dữ liệu được mã hóa và chỉ phục vụ cho trải nghiệm học tập của bé. Nexus không thu thập dữ liệu cá nhân để quảng cáo hay chia sẻ với bên thứ ba.</p></div></div>
         <div class="faq-item"><div class="faq-header" onclick="toggleFaq(this)"><span class="faq-q">Có thể điều chỉnh tỷ lệ Tiếng Anh và Tiếng Việt không?</span><span class="faq-icon">+</span></div><div class="faq-body"><p>Có. Phụ huynh có thể tự chọn hoặc để hệ thống tự động điều chỉnh tỷ lệ ngôn ngữ theo trình độ bé. Giai đoạn đầu Nexus sẽ dùng nhiều Tiếng Việt hơn để bé quen, và dần tăng Tiếng Anh theo tiến bộ thực tế.</p></div></div>
       </div>
@@ -983,19 +935,20 @@
       <div class="section-eyebrow">Bảng giá</div>
       <h2 class="section-heading">Đầu tư cho hành trình<br>tiếng Anh của bé</h2>
       <p class="section-sub">Một lần sở hữu, đồng hành cùng bé nhiều năm. Nexus được xây dựng để bền vững và không ngừng cải thiện.</p>
+      <p class="section-sub" style="margin-top:1rem;color:var(--red);font-weight:700;">Hiện Nexus chỉ chạy thử nghiệm tại Đà Nẵng để tiện bảo hành và hỗ trợ kỹ thuật.</p>
       <div class="pricing-grid">
         <div class="price-card">
           <div class="price-badge pb-default">Cơ bản</div>
           <div class="price-title">Nexus Starter</div>
           <div class="price-desc">Phù hợp cho gia đình muốn bé bắt đầu hành trình học tiếng Anh với robot AI.</div>
-          <div class="price-num"><span class="price-old">3.300.000 ₫</span><span class="price-cur">2.700.000 ₫</span></div>
+          <div class="price-num"><span class="price-old">2.700.000 ₫</span><span class="price-cur">1.799.000 ₫</span></div>
           <div class="price-unit">Một lần, không phí ẩn · Miễn phí vận chuyển</div>
           <div class="price-features">
             <div class="price-feat">Robot Nexus phiên bản tiêu chuẩn</div>
             <div class="price-feat">500+ từ vựng, 15+ chủ đề</div>
             <div class="price-feat">Hội thoại AI cơ bản (Tiếng Anh & Tiếng Việt)</div>
             <div class="price-feat">Ứng dụng quản lý cho phụ huynh</div>
-            <div class="price-feat">Bảo hành phần cứng 12 tháng</div>
+            <div class="price-feat">Bảo hành phần cứng 3 tháng</div>
             <div class="price-feat">Hỗ trợ kỹ thuật miễn phí</div>
           </div>
           <button class="btn btn-outline btn-full" onclick="smoothScroll('#cta')">Đặt hàng ngay</button>
@@ -1004,7 +957,7 @@
           <div class="price-badge pb-featured" style="position:relative;z-index:1;">⭐ Được chọn nhiều nhất</div>
           <div class="price-title" style="position:relative;z-index:1;">Nexus Pro</div>
           <div class="price-desc" style="position:relative;z-index:1;">Trải nghiệm đầy đủ nhất — AI thông minh hơn, nội dung cập nhật liên tục và hỗ trợ ưu tiên.</div>
-          <div class="price-num" style="position:relative;z-index:1;"><span class="price-old" style="color:rgba(255,255,255,0.25);">3.300.000 ₫</span><span class="price-cur">2.700.000 ₫</span></div>
+          <div class="price-num" style="position:relative;z-index:1;"><span class="price-old" style="color:rgba(255,255,255,0.25);">2.700.000 ₫</span><span class="price-cur">1.799.000 ₫</span></div>
           <div class="price-unit" style="position:relative;z-index:1;">+ Gói AI 149.000 ₫/tháng · Dùng thử 30 ngày miễn phí</div>
           <div class="price-features" style="position:relative;z-index:1;">
             <div class="price-feat">Tất cả tính năng Starter</div>
@@ -1025,6 +978,7 @@
   <section class="cta-section" id="cta">
     <h2>Đặt hàng Nexus</h2>
     <p>Điền thông tin bên dưới — chúng tôi sẽ liên hệ xác nhận trong 24h.</p>
+    <p style="max-width:520px;margin:-1.4rem auto 1.6rem;color:rgba(255,255,255,.72);font-weight:700;">Hiện chỉ nhận khách hàng tại Đà Nẵng trong giai đoạn chạy thử nghiệm để hỗ trợ bảo hành và kỹ thuật nhanh hơn.</p>
     <form id="order-form" class="order-form" onsubmit="submitOrder(event)" style="max-width:480px;margin:1.5rem auto 0;text-align:left;">
       <div class="of-field"><label>Họ và tên <span style="color:var(--red)">*</span></label><input type="text" id="of-name" placeholder="Nguyễn Văn A" required minlength="2" maxlength="100" /></div>
       <div class="of-field"><label>Số điện thoại <span style="color:var(--red)">*</span></label><input type="tel" id="of-phone" placeholder="0912 345 678" required minlength="8" maxlength="20" /></div>
@@ -1032,13 +986,13 @@
       <div class="of-field"><label>Địa chỉ nhận hàng</label><input type="text" id="of-address" placeholder="Số nhà, đường, quận/huyện, tỉnh/TP" maxlength="300" /></div>
       <div class="of-field"><label>Gói sản phẩm</label>
         <select id="of-package">
-          <option value="starter">Nexus Starter — 2.700.000 ₫</option>
-          <option value="pro" selected>Nexus Pro — 2.700.000 ₫ + 149k/tháng</option>
+          <option value="starter">Nexus Starter — 1.799.000 ₫</option>
+          <option value="pro" selected>Nexus Pro — 1.799.000 ₫ + 149k/tháng</option>
         </select>
       </div>
       <div class="of-field"><label>Ghi chú</label><textarea id="of-note" placeholder="Yêu cầu thêm (nếu có)" rows="2" maxlength="500"></textarea></div>
       <button type="submit" id="of-btn" class="btn btn-primary btn-full" style="margin-top:.5rem;font-size:.95rem;padding:.85rem;">🛒 Đặt hàng ngay</button>
-      <p style="text-align:center;font-size:.75rem;color:rgba(255,255,255,.45);margin-top:.6rem;">Miễn phí vận chuyển · Bảo hành 12 tháng · Thanh toán khi nhận hàng</p>
+      <p style="text-align:center;font-size:.75rem;color:rgba(255,255,255,.45);margin-top:.6rem;">Miễn phí vận chuyển · Bảo hành 3 tháng · Thanh toán khi nhận hàng</p>
     </form>
   </section>
 
