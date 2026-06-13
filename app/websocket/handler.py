@@ -31,6 +31,43 @@ _pending_offline_tasks: dict[str, asyncio.Task] = {}
 OFFLINE_DELAY_SECONDS = 300
 
 
+def _build_tts_action(emotion: str | None) -> dict | None:
+    """Server quyết định action, ESP chỉ nhận và chạy servo."""
+    normalized = (emotion or "neutral").strip().lower()
+
+    if normalized in {"happy", "excited", "laughing", "loving"}:
+        return {
+            "hands": 2,
+            "hand": 3,
+            "repeat": 3,
+            "mood": normalized,
+            "speed_ms": 180,
+            "amplitude": 85,
+        }
+
+    if normalized in {"sad", "sleepy"}:
+        return None
+
+    if normalized == "confused":
+        return {
+            "hands": 1,
+            "hand": 1,
+            "repeat": 1,
+            "mood": "confused",
+            "speed_ms": 260,
+            "amplitude": 55,
+        }
+
+    return {
+        "hands": 1,
+        "hand": 1,
+        "repeat": 1,
+        "mood": "normal",
+        "speed_ms": 220,
+        "amplitude": 60,
+    }
+
+
 def _cancel_pending_offline(device_id: str) -> None:
     task = _pending_offline_tasks.pop(device_id, None)
     if task and not task.done():
@@ -590,6 +627,7 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
     
     session.is_speaking = True
     ws_open = True
+    current_tts_emotion = "neutral"
 
     async def safe_send_json(data: dict) -> None:
         nonlocal ws_open
@@ -618,9 +656,15 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
 
     async def on_tts_sentence(text: str) -> None:
         logger.info(f"[{session.device_id}] TTS sentence: {text}")
-        await safe_send_json({"type": "tts", "state": "sentence_start", "text": text})
+        payload = {"type": "tts", "state": "sentence_start", "text": text}
+        action = _build_tts_action(current_tts_emotion)
+        if action:
+            payload["action"] = action
+        await safe_send_json(payload)
 
     async def on_emotion(emotion: str) -> None:
+        nonlocal current_tts_emotion
+        current_tts_emotion = (emotion or "neutral").strip().lower()
         logger.info(f"[{session.device_id}] Emotion: {emotion}")
         await safe_send_json({"type": "llm", "emotion": emotion})
 

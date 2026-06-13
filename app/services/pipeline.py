@@ -889,8 +889,10 @@ class ConversationPipeline:
                 if not raw_response:
                     return
 
-                response_language, response_text = self._parse_llm_tts_payload(raw_response)
+                response_language, response_emotion, response_text = self._parse_llm_tts_payload(raw_response)
                 full_response = response_text
+                if response_emotion and on_emotion and not is_aborted() and not should_stop_generation():
+                    await on_emotion(response_emotion)
 
                 buffer = response_text
                 while True:
@@ -1173,24 +1175,27 @@ class ConversationPipeline:
         logger.info(f"\033[92m   Queued {frame_count} frames for: {sentence[:40]}\033[0m")
 
     @staticmethod
-    def _parse_llm_tts_payload(raw_response: str) -> tuple[str | None, str]:
+    def _parse_llm_tts_payload(raw_response: str) -> tuple[str | None, str | None, str]:
         """
         Parse response format:
-        {"language":"vi|en","text":"..."}
+        {"language":"vi|en","emotion":"neutral|happy|sad|excited|confused|sleepy|laughing|loving","text":"..."}
         Fallback: treat raw as plain text.
         """
         raw = (raw_response or "").strip()
         if not raw:
-            return (None, "")
+            return (None, None, "")
 
-        def _extract_payload(obj: dict) -> tuple[str | None, str] | None:
+        def _extract_payload(obj: dict) -> tuple[str | None, str | None, str] | None:
             text_val = obj.get("text")
             if not isinstance(text_val, str):
                 return None
             lang_val = str(obj.get("language", "")).strip().lower()
             if lang_val not in {"vi", "en"}:
                 lang_val = None
-            return (lang_val, text_val.strip())
+            emotion_val = str(obj.get("emotion", "")).strip().lower()
+            if emotion_val not in {"neutral", "happy", "sad", "excited", "confused", "sleepy", "laughing", "loving"}:
+                emotion_val = None
+            return (lang_val, emotion_val, text_val.strip())
 
         try:
             parsed = json.loads(raw)
@@ -1229,7 +1234,7 @@ class ConversationPipeline:
             except Exception:
                 pass
 
-        return (None, raw)
+        return (None, None, raw)
 
     @staticmethod
     def _extract_sentence(buffer: str) -> tuple[str | None, str]:
