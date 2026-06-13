@@ -39,44 +39,62 @@ def _build_tts_action(emotion: str | None) -> dict | None:
         return {
             "type": "sequence",
             "steps": [
-                # Both arms up slightly and quickly
-                {"hand": 3, "angle": 30, "speed": 250, "hold": 0, "delay_after": 50},
-                # Wave right arm
-                {"hand": 2, "angle": 85, "speed": 350, "hold": 100, "delay_after": 0},
-                {"hand": 2, "angle": 30, "speed": 350, "hold": 100, "delay_after": 50},
-                # Wave left arm
-                {"hand": 1, "angle": 85, "speed": 350, "hold": 100, "delay_after": 0},
-                {"hand": 1, "angle": 30, "speed": 350, "hold": 100, "delay_after": 50},
-                # Both arms back down
-                {"hand": 3, "angle": 0, "speed": 400, "hold": 0, "delay_after": 0},
+                # Nâng cả hai tay lên từ từ
+                {"hand": 3, "angle": 40, "speed": 180, "hold": 150, "delay_after": 50},
+                {"hand": 3, "angle": 70, "speed": 180, "hold": 150, "delay_after": 50},
+
+                # Vẫy tay phải
+                {"hand": 2, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
+                {"hand": 2, "angle": 80, "speed": 220, "hold": 250, "delay_after": 50},
+                {"hand": 2, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
+
+                # Vẫy tay trái
+                {"hand": 1, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
+                {"hand": 1, "angle": 80, "speed": 220, "hold": 250, "delay_after": 50},
+                {"hand": 1, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
+
+                # Giữ tư thế vui vẻ một chút
+                {"hand": 3, "angle": 90, "speed": 180, "hold": 800, "delay_after": 100},
+
+                # Hạ tay từ từ
+                {"hand": 3, "angle": 40, "speed": 180, "hold": 100, "delay_after": 50},
+                {"hand": 3, "angle": 0, "speed": 180, "hold": 0, "delay_after": 0},
             ],
         }
 
     if normalized in {"sad", "sleepy"}:
-        return None  # No action for sad/sleepy
+        return {
+            "type": "sequence",
+            "steps": [
+                {"hand": 3, "angle": 15, "speed": 120, "hold": 500, "delay_after": 100},
+                {"hand": 3, "angle": 0, "speed": 120, "hold": 0, "delay_after": 0},
+            ],
+        }
 
     if normalized == "confused":
         return {
             "type": "sequence",
             "steps": [
-                # One hand up to chin, like thinking
-                {"hand": 1, "angle": 70, "speed": 400, "hold": 500, "delay_after": 100},
-                # Tilt slightly
-                {"hand": 1, "angle": 60, "speed": 400, "hold": 800, "delay_after": 50},
-                # Return to home
-                {"hand": 1, "angle": 0, "speed": 500, "hold": 0, "delay_after": 0},
+                # Đưa tay lên cằm
+                {"hand": 1, "angle": 90, "speed": 180, "hold": 600, "delay_after": 100},
+
+                # Suy nghĩ
+                {"hand": 1, "angle": 75, "speed": 150, "hold": 500, "delay_after": 50},
+                {"hand": 1, "angle": 90, "speed": 150, "hold": 500, "delay_after": 50},
+
+                # Trả về
+                {"hand": 1, "angle": 0, "speed": 220, "hold": 0, "delay_after": 0},
             ],
         }
 
-    # Default/neutral action: a subtle, welcoming gesture
+    # Neutral
     return {
         "type": "sequence",
         "steps": [
-            {"hand": 3, "angle": 20, "speed": 600, "hold": 300, "delay_after": 100},
-            {"hand": 3, "angle": 0, "speed": 600, "hold": 0, "delay_after": 0},
+            {"hand": 3, "angle": 30, "speed": 150, "hold": 500, "delay_after": 100},
+            {"hand": 3, "angle": 0, "speed": 150, "hold": 0, "delay_after": 0},
         ],
     }
-
 
 def _cancel_pending_offline(device_id: str) -> None:
     task = _pending_offline_tasks.pop(device_id, None)
@@ -681,7 +699,7 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         nonlocal current_tts_emotion
         current_tts_emotion = (emotion or "neutral").strip().lower()
         logger.info(f"[{session.device_id}] Emotion: {emotion}")
-        await safe_send_json({"type": "llm", "emotion": emotion})
+        # await safe_send_json({"type": "llm", "emotion": emotion})
 
     async def on_tts_audio(opus_frame: bytes) -> None:
         await safe_send_bytes(opus_frame)
@@ -801,7 +819,7 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         session.is_speaking = False
         _pipeline_finished_at[session.session_id] = time.monotonic()
         # Reset emotion to blink (nháy mắt) when done speaking
-        await safe_send_json({"type": "llm", "emotion": "blink"})
+        # await safe_send_json({"type": "llm", "emotion": "blink"})
 
         # ── CRITICAL FIX: cho phép nhận audio tiếp sau khi pipeline xong ──
         _pipeline_triggered.discard(session.session_id)
