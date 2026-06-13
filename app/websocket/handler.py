@@ -41,6 +41,7 @@ def _build_tts_action(emotion: str | None) -> dict | None:
             "hand": 3,
             "repeat": 3,
             "mood": normalized,
+            "delay_ms": 1200,
             "speed_ms": 180,
             "amplitude": 85,
         }
@@ -54,6 +55,7 @@ def _build_tts_action(emotion: str | None) -> dict | None:
             "hand": 1,
             "repeat": 1,
             "mood": "confused",
+            "delay_ms": 1200,
             "speed_ms": 260,
             "amplitude": 55,
         }
@@ -63,6 +65,7 @@ def _build_tts_action(emotion: str | None) -> dict | None:
         "hand": 1,
         "repeat": 1,
         "mood": "normal",
+        "delay_ms": 1200,
         "speed_ms": 220,
         "amplitude": 60,
     }
