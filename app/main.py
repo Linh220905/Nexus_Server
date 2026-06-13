@@ -1,4 +1,5 @@
 import os
+import time
 from app.server_logging import get_logger
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.staticfiles import StaticFiles
@@ -13,9 +14,11 @@ from app.api.ota_activate import router as ota_activate_router
 from app.api.auth_google import router as auth_google_router
 from app.api.auth import router as auth_local_router
 from app.api.orders import router as orders_router
+from app.api.traffic import router as traffic_router
 from app.websocket.handler import handle_client
 from app.mcp.alarm_scheduler import start_scheduler
 from app.database.connection import init_database
+from app.database.traffic_log import init_traffic_table, log_traffic
 
 logger = get_logger(__name__)
 
@@ -46,8 +49,53 @@ app.include_router(ota_activate_router)
 app.include_router(auth_google_router)
 app.include_router(auth_local_router)
 app.include_router(orders_router)
+app.include_router(traffic_router)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+# ── Traffic Logging Middleware ──────────────────────────────────────────
+@app.middleware("http")
+async def traffic_logging_middleware(request: Request, call_next):
+    """Ghi lại mọi HTTP request: IP, method, path, status, user-agent, thời gian xử lý."""
+    start = time.time()
+
+    # Lấy IP thực (qua reverse proxy headers)
+    ip = (
+        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or request.headers.get("x-real-ip", "")
+        or (request.client.host if request.client else "unknown")
+    )
+    method = request.method
+    path = request.url.path
+    user_agent = request.headers.get("user-agent", "")
+    referer = request.headers.get("referer", "")
+
+    # Log ra console với IP rõ ràng
+    logger.info(f"📡 [{ip}] {method} {path} | UA: {user_agent[:80]}")
+
+    response = await call_next(request)
+
+    elapsed_ms = (time.time() - start) * 1000
+    status_code = response.status_code
+
+    # Ghi vào DB (async-safe vì dùng sqlite sync nhưng rất nhanh)
+    log_traffic(
+        ip=ip,
+        method=method,
+        path=path,
+        status_code=status_code,
+        user_agent=user_agent,
+        referer=referer,
+        response_time_ms=round(elapsed_ms, 2),
+    )
+
+    # Log thêm nếu đáng ngờ
+    suspicious_patterns = ['.git', '.env', 'wp-admin', 'wp-login', 'phpmyadmin', '/config', '.sql', '/shell', '/passwd', '/cgi-bin']
+    if any(p in path.lower() for p in suspicious_patterns):
+        logger.warning(f"🚨 SUSPICIOUS [{ip}] {method} {path} → {status_code} | UA: {user_agent}")
+
+    return response
 
 
 @app.get("/")
@@ -90,6 +138,8 @@ async def websocket_endpoint(ws: WebSocket):
 async def on_startup():
     logger.info("=" * 60)
     init_database()
+    init_traffic_table()
+    logger.info("   📊 Traffic logging: ENABLED")
     try:
         await start_scheduler()
     except Exception:
