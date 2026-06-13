@@ -37,37 +37,44 @@ def _build_tts_action(emotion: str | None) -> dict | None:
 
     if normalized in {"happy", "excited", "laughing", "loving"}:
         return {
-            "hands": 1,
-            "hand": 1,
-            "repeat": 1,
-            "delay_ms": 2000,
-            "speed_ms": 700,
-            "hold_ms": 450,
-            "amplitude": 90,
+            "type": "sequence",
+            "steps": [
+                # Both arms up slightly and quickly
+                {"hand": 3, "angle": 30, "speed": 250, "hold": 0, "delay_after": 50},
+                # Wave right arm
+                {"hand": 2, "angle": 85, "speed": 350, "hold": 100, "delay_after": 0},
+                {"hand": 2, "angle": 30, "speed": 350, "hold": 100, "delay_after": 50},
+                # Wave left arm
+                {"hand": 1, "angle": 85, "speed": 350, "hold": 100, "delay_after": 0},
+                {"hand": 1, "angle": 30, "speed": 350, "hold": 100, "delay_after": 50},
+                # Both arms back down
+                {"hand": 3, "angle": 0, "speed": 400, "hold": 0, "delay_after": 0},
+            ],
         }
 
     if normalized in {"sad", "sleepy"}:
-        return None
+        return None  # No action for sad/sleepy
 
     if normalized == "confused":
         return {
-            "hands": 1,
-            "hand": 1,
-            "repeat": 1,
-            "delay_ms": 2000,
-            "speed_ms": 750,
-            "hold_ms": 400,
-            "amplitude": 70,
+            "type": "sequence",
+            "steps": [
+                # One hand up to chin, like thinking
+                {"hand": 1, "angle": 70, "speed": 400, "hold": 500, "delay_after": 100},
+                # Tilt slightly
+                {"hand": 1, "angle": 60, "speed": 400, "hold": 800, "delay_after": 50},
+                # Return to home
+                {"hand": 1, "angle": 0, "speed": 500, "hold": 0, "delay_after": 0},
+            ],
         }
 
+    # Default/neutral action: a subtle, welcoming gesture
     return {
-        "hands": 1,
-        "hand": 1,
-        "repeat": 1,
-        "delay_ms": 2000,
-        "speed_ms": 750,
-        "hold_ms": 400,
-        "amplitude": 90,
+        "type": "sequence",
+        "steps": [
+            {"hand": 3, "angle": 20, "speed": 600, "hold": 300, "delay_after": 100},
+            {"hand": 3, "angle": 0, "speed": 600, "hold": 0, "delay_after": 0},
+        ],
     }
 
 
