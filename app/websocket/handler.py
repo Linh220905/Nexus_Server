@@ -35,64 +35,70 @@ def _build_tts_action(emotion: str | None) -> dict | None:
     """Server quyết định action, ESP chỉ nhận và chạy servo."""
     normalized = (emotion or "neutral").strip().lower()
 
+    # ---------------- Happy ----------------
     if normalized in {"happy", "excited", "laughing", "loving"}:
         return {
             "type": "sequence",
             "steps": [
-                # Nâng cả hai tay lên từ từ
-                {"hand": 3, "angle": 40, "speed": 180, "hold": 150, "delay_after": 50},
-                {"hand": 3, "angle": 70, "speed": 180, "hold": 150, "delay_after": 50},
+                {"hand": 3, "angle": 50, "speed": 180, "hold": 150, "delay_after": 50},
+                {"hand": 3, "angle": 90, "speed": 180, "hold": 250, "delay_after": 50},
 
-                # Vẫy tay phải
-                {"hand": 2, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
-                {"hand": 2, "angle": 80, "speed": 220, "hold": 250, "delay_after": 50},
-                {"hand": 2, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
+                # Vẫy phải
+                {"hand": 2, "angle": 115, "speed": 220, "hold": 200, "delay_after": 30},
+                {"hand": 2, "angle": 85, "speed": 220, "hold": 150, "delay_after": 30},
+                {"hand": 2, "angle": 115, "speed": 220, "hold": 200, "delay_after": 50},
 
-                # Vẫy tay trái
-                {"hand": 1, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
-                {"hand": 1, "angle": 80, "speed": 220, "hold": 250, "delay_after": 50},
-                {"hand": 1, "angle": 110, "speed": 220, "hold": 300, "delay_after": 50},
+                # Vẫy trái
+                {"hand": 1, "angle": 115, "speed": 220, "hold": 200, "delay_after": 30},
+                {"hand": 1, "angle": 85, "speed": 220, "hold": 150, "delay_after": 30},
+                {"hand": 1, "angle": 115, "speed": 220, "hold": 200, "delay_after": 50},
 
-                # Giữ tư thế vui vẻ một chút
-                {"hand": 3, "angle": 90, "speed": 180, "hold": 800, "delay_after": 100},
-
-                # Hạ tay từ từ
-                {"hand": 3, "angle": 40, "speed": 180, "hold": 100, "delay_after": 50},
+                {"hand": 3, "angle": 90, "speed": 180, "hold": 500, "delay_after": 50},
+                {"hand": 3, "angle": 40, "speed": 180, "hold": 100, "delay_after": 30},
                 {"hand": 3, "angle": 0, "speed": 180, "hold": 0, "delay_after": 0},
             ],
         }
 
+    # ---------------- Sad / Sleepy ----------------
     if normalized in {"sad", "sleepy"}:
         return {
             "type": "sequence",
             "steps": [
-                {"hand": 3, "angle": 15, "speed": 120, "hold": 500, "delay_after": 100},
+                {"hand": 3, "angle": 10, "speed": 120, "hold": 400, "delay_after": 50},
                 {"hand": 3, "angle": 0, "speed": 120, "hold": 0, "delay_after": 0},
             ],
         }
 
+    # ---------------- Confused ----------------
     if normalized == "confused":
         return {
             "type": "sequence",
             "steps": [
-                # Đưa tay lên cằm
-                {"hand": 1, "angle": 90, "speed": 180, "hold": 600, "delay_after": 100},
-
-                # Suy nghĩ
-                {"hand": 1, "angle": 75, "speed": 150, "hold": 500, "delay_after": 50},
-                {"hand": 1, "angle": 90, "speed": 150, "hold": 500, "delay_after": 50},
-
-                # Trả về
+                {"hand": 1, "angle": 85, "speed": 180, "hold": 500, "delay_after": 50},
+                {"hand": 1, "angle": 70, "speed": 150, "hold": 300, "delay_after": 30},
+                {"hand": 1, "angle": 85, "speed": 150, "hold": 300, "delay_after": 30},
+                {"hand": 1, "angle": 70, "speed": 150, "hold": 300, "delay_after": 30},
                 {"hand": 1, "angle": 0, "speed": 220, "hold": 0, "delay_after": 0},
             ],
         }
 
-    # Neutral
+    # ---------------- Neutral ----------------
     return {
         "type": "sequence",
         "steps": [
-            {"hand": 3, "angle": 30, "speed": 150, "hold": 500, "delay_after": 100},
-            {"hand": 3, "angle": 0, "speed": 150, "hold": 0, "delay_after": 0},
+            # Tay phải nhấc nhẹ như đang giải thích
+            {"hand": 2, "angle": 20, "speed": 180, "hold": 150, "delay_after": 30},
+            {"hand": 2, "angle": 30, "speed": 180, "hold": 150, "delay_after": 30},
+            {"hand": 2, "angle": 15, "speed": 180, "hold": 100, "delay_after": 30},
+
+            # Tay trái phản hồi nhẹ
+            {"hand": 1, "angle": 15, "speed": 180, "hold": 120, "delay_after": 30},
+            {"hand": 1, "angle": 25, "speed": 180, "hold": 120, "delay_after": 30},
+            {"hand": 1, "angle": 10, "speed": 180, "hold": 100, "delay_after": 30},
+
+            # Trả về vị trí nghỉ
+            {"hand": 2, "angle": 0, "speed": 180, "hold": 0, "delay_after": 0},
+            {"hand": 1, "angle": 0, "speed": 180, "hold": 0, "delay_after": 0},
         ],
     }
 
