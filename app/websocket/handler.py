@@ -37,13 +37,13 @@ def _build_tts_action(emotion: str | None) -> dict | None:
 
     if normalized in {"happy", "excited", "laughing", "loving"}:
         return {
-            "hands": 2,
-            "hand": 3,
-            "repeat": 3,
-            "mood": normalized,
-            "delay_ms": 1200,
-            "speed_ms": 180,
-            "amplitude": 85,
+            "hands": 1,
+            "hand": 1,
+            "repeat": 1,
+            "delay_ms": 2000,
+            "speed_ms": 700,
+            "hold_ms": 450,
+            "amplitude": 90,
         }
 
     if normalized in {"sad", "sleepy"}:
@@ -54,20 +54,20 @@ def _build_tts_action(emotion: str | None) -> dict | None:
             "hands": 1,
             "hand": 1,
             "repeat": 1,
-            "mood": "confused",
-            "delay_ms": 1200,
-            "speed_ms": 260,
-            "amplitude": 55,
+            "delay_ms": 2000,
+            "speed_ms": 750,
+            "hold_ms": 400,
+            "amplitude": 70,
         }
 
     return {
         "hands": 1,
         "hand": 1,
         "repeat": 1,
-        "mood": "normal",
-        "delay_ms": 1200,
-        "speed_ms": 220,
-        "amplitude": 60,
+        "delay_ms": 2000,
+        "speed_ms": 750,
+        "hold_ms": 400,
+        "amplitude": 90,
     }
 
 
@@ -631,6 +631,8 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
     session.is_speaking = True
     ws_open = True
     current_tts_emotion = "neutral"
+    tts_sentence_count = 0
+    tts_action_sent = False
 
     async def safe_send_json(data: dict) -> None:
         nonlocal ws_open
@@ -658,11 +660,14 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         await safe_send_json({"type": "tts", "state": "start"})
 
     async def on_tts_sentence(text: str) -> None:
+        nonlocal tts_sentence_count, tts_action_sent
         logger.info(f"[{session.device_id}] TTS sentence: {text}")
+        tts_sentence_count += 1
         payload = {"type": "tts", "state": "sentence_start", "text": text}
         action = _build_tts_action(current_tts_emotion)
-        if action:
+        if action and not tts_action_sent and tts_sentence_count >= 2:
             payload["action"] = action
+            tts_action_sent = True
         await safe_send_json(payload)
 
     async def on_emotion(emotion: str) -> None:
