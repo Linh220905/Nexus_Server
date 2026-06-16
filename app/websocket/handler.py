@@ -97,8 +97,8 @@ def _build_tts_action(emotion: str | None) -> dict | None:
             {"hand": 1, "angle": 70, "speed": 300, "hold": 200, "delay_after": 30},
 
             # Trả về vị trí nghỉ
-            {"hand": 2, "angle": 0, "speed": 180, "hold": 0, "delay_after": 0},
-            {"hand": 1, "angle": 0, "speed": 180, "hold": 0, "delay_after": 0},
+            {"hand": 2, "angle": 0, "speed": 300, "hold": 0, "delay_after": 0},
+            {"hand": 1, "angle": 0, "speed": 300, "hold": 0, "delay_after": 0},
         ],
     }
 
@@ -788,9 +788,11 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         chat_history.extend(session.chat_history[1:])  # Add the rest of the history without the original system message
 
     try:
+        interaction_mode = robot_config.interaction_mode if robot_config else "free_talk"
         result = await session.pipeline.process(
             pcm_data,
             chat_history,
+            interaction_mode=interaction_mode,
             learning_context=session.learning_context,
             on_stt_result=on_stt_result,
             on_tts_start=on_tts_start,

@@ -226,9 +226,6 @@ class RobotManager {
             <div class="robot-config">
                 <h4>Configuration</h4>
                 <div class="config-item">
-                    <label><strong>System Prompt:</strong></label>
-                    <textarea readonly rows="3" style="width:100%;margin-top:5px;">${robot.config?.system_prompt || ''}</textarea>
-                </div>
                 <div class="config-item">
                     <label><strong>Voice Style:</strong></label>
                     <input type="text" readonly value="${robot.config?.voice_style || ''}" style="width:100%;margin-top:5px;">
@@ -266,7 +263,6 @@ class RobotManager {
                     
                     // Load config
                     if (robot.config) {
-                        document.getElementById('edit-system-prompt').value = robot.config.system_prompt || '';
                         document.getElementById('edit-voice-style').value = robot.config.voice_style || '';
                         document.getElementById('edit-language').value = robot.config.language || '';
                     }
@@ -286,7 +282,6 @@ class RobotManager {
         const description = document.getElementById('edit-description').value;
         
         const config = {
-            system_prompt: document.getElementById('edit-system-prompt').value,
             voice_style: document.getElementById('edit-voice-style').value,
             language: document.getElementById('edit-language').value
         };
@@ -320,7 +315,6 @@ class RobotManager {
         const description = document.getElementById('robot-description').value;
         
         const config = {
-            system_prompt: document.getElementById('robot-system-prompt').value,
             voice_style: document.getElementById('robot-voice-style').value,
             language: document.getElementById('robot-language').value
         };
@@ -384,7 +378,6 @@ class RobotManager {
         document.getElementById('robot-name').value = '';
         document.getElementById('robot-mac').value = '';
         document.getElementById('robot-description').value = '';
-        document.getElementById('robot-system-prompt').value = '';
         document.getElementById('robot-voice-style').value = 'default';
         document.getElementById('robot-language').value = 'vi';
     }

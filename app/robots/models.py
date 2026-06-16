@@ -35,6 +35,7 @@ class RobotConfigBase(BaseModel):
     llm_config: Optional[Dict[str, Any]] = None
     tts_config: Optional[Dict[str, Any]] = None
     stt_config: Optional[Dict[str, Any]] = None
+    interaction_mode: Optional[str] = "free_talk"
     version: int = 1
 
 
@@ -48,6 +49,7 @@ class RobotConfigUpdate(BaseModel):
     llm_config: Optional[Dict[str, Any]] = None
     tts_config: Optional[Dict[str, Any]] = None
     stt_config: Optional[Dict[str, Any]] = None
+    interaction_mode: Optional[str] = None
 
 
 class RobotConfigInDB(RobotConfigBase):

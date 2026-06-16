@@ -22,7 +22,7 @@ from .auth_google import router as auth_google_router, require_viewer
 from .OTA.firmware import router as ota_firmware_router
 from .admin import firmware_router as admin_firmware_router
 from .admin import users_router as admin_users_router
-from app.services.learning_content import get_learning_payload
+from app.services.learning_content import get_a1_learning_roadmap, get_learning_payload
 from app.database.assignments import (
     create_assignment_for_user,
     delete_assignment_for_user,
@@ -132,6 +132,13 @@ async def chat_history(session: dict = Depends(require_viewer)):
 async def learning_topics(session: dict = Depends(require_viewer)):
     _ = session
     return get_learning_payload()
+
+
+@router.get("/learning/roadmap")
+async def learning_roadmap(session: dict = Depends(require_viewer)):
+    """Returns the A1 English learning roadmap."""
+    _ = session
+    return get_a1_learning_roadmap()
 
 
 @router.get("/assignments")

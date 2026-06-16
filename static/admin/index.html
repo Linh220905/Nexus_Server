@@ -1066,6 +1066,7 @@
     <div class="nav-item viewer-only" data-tab="conversation" onclick="switchTab('conversation',this)"><span class="nav-icon">💬</span> Hội thoại<span class="nav-badge">20+</span></div>
     <div class="nav-item viewer-only" data-tab="chat-history" onclick="switchTab('chat-history',this);loadChatHistory();"><span class="nav-icon">🕐</span> Lịch sử chat</div>
     <div class="nav-item viewer-only" data-tab="assignments" onclick="switchTab('assignments',this);loadAssignments();"><span class="nav-icon">📝</span> Bài tập</div>
+    <div class="nav-item viewer-only" data-tab="learning-roadmap" onclick="switchTab('learning-roadmap',this);"><span class="nav-icon">🗺️</span> Lộ trình học</div>
     <div class="nav-section-label">Quản lý</div>
     <div class="nav-item admin-only" data-tab="add-robot" onclick="switchTab('add-robot',this)"><span class="nav-icon">＋</span> Thêm Robot</div>
     <div class="nav-item admin-only" data-tab="firmware" onclick="switchTab('firmware',this)"><span class="nav-icon">⬆</span> Firmware</div>
@@ -1210,7 +1211,6 @@
           <div class="field"><label>Mô tả</label><textarea id="robot-description" rows="2" placeholder="Mô tả ngắn về robot này..."></textarea></div>
           <div class="form-section">
             <div class="form-section-title">Cấu hình</div>
-            <div class="field"><label>System Prompt</label><textarea id="robot-system-prompt" rows="4" placeholder="You are a helpful assistant robot..."></textarea></div>
             <div class="form-row">
               <div class="field"><label>TTS Provider</label><select id="robot-tts-provider"><option value="google">Google Cloud TTS</option><option value="edge">Microsoft Edge TTS</option></select></div>
               <div class="field"><label>Chế độ ngôn ngữ</label><select id="robot-tts-language"><option value="auto">Tự động</option><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option></select></div>
@@ -1226,6 +1226,22 @@
             <div class="form-row">
               <div class="field"><label>Phong cách giọng</label><select id="robot-voice-style"><option value="default">Mặc định</option><option value="happy">Vui vẻ</option><option value="calm">Bình tĩnh</option><option value="sad">Buồn</option><option value="angry">Nghiêm túc</option></select></div>
               <div class="field"><label>Ngôn ngữ</label><select id="robot-language"><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option><option value="ja">Tiếng Nhật</option><option value="zh">Tiếng Trung</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label for="robot-interaction-mode">Chế độ tương tác</label>
+                    <select id="robot-interaction-mode">
+                        <option value="free_talk">Giao tiếp Tự do</option>
+                        <option value="teaching">Chế độ Dạy học</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="robot-mode">Chế độ robot</label>
+                    <select id="robot-mode">
+                        <option value="normal">Bình thường</option>
+                        <option value="assistant">Trợ lý</option>
+                    </select>
+                </div>
             </div>
           </div>
           <button type="submit" class="btn btn-primary" id="create-btn">Tạo Robot →</button>
@@ -1299,6 +1315,13 @@
       </div>
       <div class="section-bar"><span class="section-title">Danh sách bài tập đã giao</span><span class="count-pill" id="assignment-count">0 bài</span></div>
       <div id="assignment-list"></div>
+    </div>
+
+    <!-- Learning Roadmap -->
+    <div class="tab-view viewer-only" id="tab-learning-roadmap">
+      <div class="breadcrumb"><a onclick="switchTab('dashboard',document.querySelector('[data-tab=dashboard]'))">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Lộ trình học</span></div>
+      <div class="topbar"><div><div class="page-title">🗺️ Lộ trình học Tiếng Anh A1</div><div class="page-sub">Lộ trình học Tiếng Anh cho người mới bắt đầu theo chuẩn Cambridge A1.</div></div></div>
+      <div id="roadmap-container"></div>
     </div>
 
       <!-- Orders (Admin) -->
@@ -1401,32 +1424,43 @@
       <input type="hidden" id="edit-id" />
       <div class="field"><label>Tên Robot</label><input type="text" id="edit-name" required /></div>
       <div class="field"><label>Mô tả</label><textarea id="edit-description" rows="2"></textarea></div>
-      <div class="form-section">
-        <div class="form-section-title">Cấu hình</div>
-        <div class="field"><label>System Prompt</label><textarea id="edit-system-prompt" rows="4"></textarea></div>
-        <div class="form-row">
-          <div class="field"><label>TTS Provider</label><select id="edit-tts-provider"><option value="google">Google Cloud TTS</option><option value="edge">Microsoft Edge TTS</option></select></div>
-          <div class="field"><label>Ngôn ngữ TTS</label><select id="edit-tts-language"><option value="auto">Tự động</option><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option></select></div>
+<div class="form-section">
+<div class="form-section-title">Cấu hình AI</div>
+    <div class="form-row">
+        <div class="field">
+            <label for="edit-voice-style">Giọng nói (TTS)</label>
+            <select id="edit-voice-style">
+                <option value="default" selected>Mặc định</option>
+                <option value="friendly">Thân thiện</option>
+                <option value="lively">Sôi nổi</option>
+            </select>
         </div>
-        <div class="form-row">
-          <div class="field"><label>Google Voice (VI)</label><input type="text" id="edit-google-voice-vi" /></div>
-          <div class="field"><label>Google Voice (EN)</label><input type="text" id="edit-google-voice-en" /></div>
+        <div class="field">
+            <label for="edit-language">Ngôn ngữ</label>
+            <select id="edit-language">
+                <option value="vi" selected>Tiếng Việt</option>
+                <option value="en">Tiếng Anh</option>
+                <option value="jp">Tiếng Nhật</option>
+                <option value="cn">Tiếng Trung</option>
+            </select>
         </div>
-        <div class="form-row">
-          <div class="field"><label>Edge Voice (VI)</label><input type="text" id="edit-edge-voice-vi" /></div>
-          <div class="field"><label>Edge Voice (EN)</label><input type="text" id="edit-edge-voice-en" /></div>
-        </div>
-        <div class="form-row">
-          <div class="field"><label>Phong cách giọng</label><select id="edit-voice-style"><option value="default">Mặc định</option><option value="happy">Vui vẻ</option><option value="calm">Bình tĩnh</option><option value="sad">Buồn</option><option value="angry">Nghiêm túc</option></select></div>
-          <div class="field"><label>Ngôn ngữ</label><select id="edit-language"><option value="vi">Tiếng Việt</option><option value="en">Tiếng Anh</option><option value="ja">Tiếng Nhật</option><option value="zh">Tiếng Trung</option></select></div>
-        </div>
-      </div>
-      <div style="display:flex;gap:.6rem;">
-        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-        <button type="button" class="btn btn-ghost" onclick="closeModal()">Hủy</button>
-      </div>
-    </form>
-  </div>
+    </div>
+    <div class="form-row">
+	    <div class="field">
+	        <label for="edit-interaction-mode">Chế độ tương tác</label>
+	        <select id="edit-interaction-mode">
+	            <option value="free_talk">Giao tiếp Tự do</option>
+	            <option value="teaching">Chế độ Dạy học</option>
+	        </select>
+	    </div>
+	    <div class="field">
+	        <label for="edit-robot-mode">Chế độ robot</label>
+	        <select id="edit-robot-mode">
+	            <option value="normal">Bình thường</option>
+	            <option value="assistant">Trợ lý</option>
+	        </select>
+	    </div>
+	</div>
 </div>
 
 <div class="toast" id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
@@ -1672,6 +1706,7 @@ async function loadLearningData() {
     if(Array.isArray(data.vocabulary)&&data.vocabulary.length){VOCAB_TOPICS=data.vocabulary.map(topic=>({...topic,words:Array.isArray(topic.words)?topic.words.map(w=>({word:w.word||'',phonetic:w.phonetic||'/--/',type:w.type||'word',meaning:w.meaning||'',example:w.example||''})):[]}))}
     if(Array.isArray(data.conversation)&&data.conversation.length){CONV_TOPICS=data.conversation;}
     learningLoaded=true;renderVocabTopics();renderConvTopics();
+    loadRoadmap();
   }catch(e){}
 }
 
@@ -1781,7 +1816,14 @@ async function handleCreateRobot(e) {
   try{
     const res=await apiFetch(API_ROBOTS,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mac_address:mac,robot_id:robotId,name:name||null})});
     if(res.ok){
-      await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_prompt:document.getElementById('robot-system-prompt').value,voice_config:{style:document.getElementById('robot-voice-style').value},tts_config:ttsConfig,stt_config:{language:document.getElementById('robot-language').value}})});
+      const configPayload = {
+          voice_config:{style:document.getElementById('robot-voice-style').value},
+          tts_config:ttsConfig,
+          stt_config:{language:document.getElementById('robot-language').value},
+          interaction_mode: document.getElementById('robot-interaction-mode').value,
+          robot_mode: document.getElementById('robot-mode').value
+      };
+      await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(configPayload)});
       toast('✓','Robot tạo thành công!','success');document.getElementById('robot-form').reset();switchTab('dashboard',document.querySelector('[data-tab=dashboard]'));await loadRobots();
     }else{const err=await res.json().catch(()=>({}));toast('✕',err.detail||'Tạo robot thất bại','error');}
   }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
@@ -1791,13 +1833,24 @@ async function handleCreateRobot(e) {
 async function openEdit(i) {
   const r=robots[i];
   document.getElementById('edit-id').value=r.mac_address;document.getElementById('edit-name').value=r.name||'';document.getElementById('edit-description').value='';
-  try{const res=await apiFetch(API_ROBOTS+encodeURIComponent(r.mac_address)+'/config');if(res.ok){const cfg=await res.json();const tc=cfg.tts_config||{};
-    document.getElementById('edit-system-prompt').value=cfg.system_prompt||'';
+  try{const res=await apiFetch(API_ROBOTS+encodeURIComponent(r.mac_address)+'/config');if(res.ok){const cfg=await res.json();const tc=cfg.tts_config||{};const vc=cfg.voice_config||{};const sc=cfg.stt_config||{};
     document.getElementById('edit-tts-provider').value=tc.provider||'google';document.getElementById('edit-tts-language').value=tc.language||'auto';
     document.getElementById('edit-google-voice-vi').value=tc.google_voice_vi||'vi-VN-Neural2-A';document.getElementById('edit-google-voice-en').value=tc.google_voice_en||'en-US-Neural2-F';
     document.getElementById('edit-edge-voice-vi').value=tc.edge_voice_vi||'vi-VN-HoaiMyNeural';document.getElementById('edit-edge-voice-en').value=tc.edge_voice_en||'en-US-JennyNeural';
-  }}catch(e){document.getElementById('edit-system-prompt').value='';}
-  document.getElementById('edit-voice-style').value='default';document.getElementById('edit-language').value='vi';
+    document.getElementById('edit-voice-style').value=vc.style||'default';document.getElementById('edit-language').value=sc.language||'vi';
+    document.getElementById('edit-interaction-mode').value=cfg.interaction_mode||'free_talk';
+    document.getElementById('edit-robot-mode').value=cfg.robot_mode||'normal';
+  }else{
+    document.getElementById('edit-voice-style').value='default';
+    document.getElementById('edit-language').value='vi';
+    document.getElementById('edit-interaction-mode').value='free_talk';
+    document.getElementById('edit-robot-mode').value='normal';
+  }}catch(e){
+    document.getElementById('edit-voice-style').value='default';
+    document.getElementById('edit-language').value='vi';
+    document.getElementById('edit-interaction-mode').value='free_talk';
+    document.getElementById('edit-robot-mode').value='normal';
+  }
   document.getElementById('modal-title').textContent='Chỉnh sửa — '+(r.name||r.robot_id);
   document.getElementById('edit-modal').classList.add('open');
 }
@@ -1808,7 +1861,13 @@ async function handleUpdateRobot(e) {
   e.preventDefault();const mac=document.getElementById('edit-id').value,name=document.getElementById('edit-name').value.trim();
   const ttsConfig=readTtsConfig('edit');
   try{const res=await apiFetch(API_ROBOTS+encodeURIComponent(mac),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name||null})});if(!res.ok){const err=await res.json().catch(()=>({}));toast('✕',err.detail||'Cập nhật thất bại','error');return;}}catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');return;}
-  try{const res2=await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_prompt:document.getElementById('edit-system-prompt').value,voice_config:{style:document.getElementById('edit-voice-style').value},tts_config:ttsConfig,stt_config:{language:document.getElementById('edit-language').value}})});
+  try{const configPayload={
+      voice_config:{style:document.getElementById('edit-voice-style').value},
+      tts_config:ttsConfig,
+      stt_config:{language:document.getElementById('edit-language').value},
+      interaction_mode:document.getElementById('edit-interaction-mode').value,
+      robot_mode:document.getElementById('edit-robot-mode').value
+      };const res2=await apiFetch(API_ROBOTS+encodeURIComponent(mac)+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(configPayload)});
     if(res2.ok){toast('✓','Đã lưu thay đổi!','success');closeModal();await loadRobots();}
     else{const err=await res2.json().catch(()=>({}));toast('✕',err.detail||'Cập nhật thất bại','error');}
   }catch(err){if(err.message!=='Forbidden')toast('✕','Lỗi kết nối','error');}
@@ -1862,6 +1921,35 @@ async function loadChatHistory() {
   }catch(err){c.innerHTML='<div class="empty-state"><div class="ei">⚠️</div><h3>Lỗi kết nối</h3></div>';}
 }
 function toggleChatSession(i){const c=document.getElementById('chat-session-'+i);if(c)c.classList.toggle('open');}
+
+// ─── LEARNING ROADMAP ───
+async function loadRoadmap() {
+    const container = document.getElementById('roadmap-container');
+    container.innerHTML = '<div style="text-align:center;padding:2rem;"><span class="spinner spinner-dark"></span></div>';
+    try {
+        const res = await fetch('/api/learning/roadmap');
+        if (!res.ok) throw new Error('Failed to load roadmap');
+        const data = await res.json();
+        
+        let html = `<div class="form-card" style="max-width:none;"><h2>${esc(data.title)}</h2><p>${esc(data.description)}</p></div>`;
+        
+        data.modules.forEach(module => {
+            html += `<div class="form-card" style="max-width:none;margin-top:1.5rem;"><h3>${esc(module.title)}</h3>`;
+            module.lessons.forEach(lesson => {
+                html += `<div class="lesson" style="margin-top:1rem;padding:1rem;background:var(--bg3);border-radius:var(--r-sm);border:1px solid var(--border);">
+                           <h4>${esc(lesson.title)}</h4>
+                           <p style="font-size:.8rem;color:var(--text-2);">${esc(lesson.description)}</p>
+                           <div style="margin-top:.5rem;font-size:.75rem;"><strong>Từ vựng:</strong> ${lesson.vocabulary.map(v => `<span style="background:var(--red-soft);color:var(--red);padding:.2rem .4rem;border-radius:4px;font-weight:600;display:inline-block;margin:2px;">${esc(v)}</span>`).join(' ')}</div>
+                         </div>`;
+            });
+            html += `</div>`;
+        });
+
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<div class="empty-state"><h3>Could not load learning roadmap</h3></div>';
+    }
+}
 
 // ─── ASSIGNMENTS ───
 function resetAssignmentForm() {

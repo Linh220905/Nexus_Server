@@ -136,6 +136,45 @@ def get_learning_payload() -> dict:
     }
 
 
+A1_ROADMAP_PATH = Path(__file__).parent.parent / "data" / "a1_roadmap.json"
+
+
+def get_a1_learning_roadmap() -> dict:
+    """Loads the A1 English learning roadmap from the JSON file."""
+    if not A1_ROADMAP_PATH.exists():
+        logger.error("A1 learning roadmap file not found at %s", A1_ROADMAP_PATH)
+        return {"error": "Roadmap content not available."}
+    try:
+        content = A1_ROADMAP_PATH.read_text(encoding="utf-8")
+        return json.loads(content)
+    except Exception as e:
+        logger.exception("Failed to load or parse A1 learning roadmap: %s", e)
+        return {"error": "Failed to load roadmap content."}
+
+
+def get_next_lesson_from_roadmap(current_lesson_id: int = 0) -> dict | None:
+    """Gets the next lesson from the A1 roadmap based on the current lesson ID."""
+    roadmap = get_a1_learning_roadmap()
+    if not roadmap or "units" not in roadmap:
+        return None
+
+    lessons = []
+    for unit in roadmap.get("units", []):
+        for lesson in unit.get("lessons", []):
+            lessons.append(lesson)
+
+    if not lessons:
+        return None
+
+    if current_lesson_id < 0:
+        return lessons[0]
+
+    if current_lesson_id >= len(lessons):
+        return None  # All lessons completed
+
+    return lessons[current_lesson_id]
+
+
 def build_flashcard_image_url(topic_id: str, word: str, meaning: str) -> str:
     return (
         f"{FLASHCARD_BASE_PATH}?topic_id={quote(topic_id)}"
