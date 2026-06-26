@@ -1,0 +1,107 @@
+topic_id: "food_drinks_basic"
+title: "Food and Drinks"
+level: "beginner"
+target_age: "3-8"
+duration_minutes: 12
+category: "vocabulary"
+
+learning_objectives:
+  - "Biết gọi tên các món ăn và thức uống cơ bản"
+  - "Có thể nói món mình thích bằng tiếng Anh"
+
+vocabulary:
+  - word: "rice"
+    pronunciation: "/raɪs/"
+    meaning_vi: "cơm / gạo"
+    examples:
+      - text: "I eat rice for lunch"
+        translation: "Tôi ăn cơm vào bữa trưa"
+      - text: "Rice is delicious"
+        translation: "Cơm ngon quá"
+    related_objects: ["bowl", "chopsticks", "plate"]
+
+  - word: "milk"
+    pronunciation: "/mɪlk/"
+    meaning_vi: "sữa"
+    examples:
+      - text: "I drink milk every day"
+        translation: "Tôi uống sữa mỗi ngày"
+      - text: "The milk is cold"
+        translation: "Sữa lạnh quá"
+    related_objects: ["glass", "cow", "straw"]
+
+  - word: "bread"
+    pronunciation: "/bred/"
+    meaning_vi: "bánh mì"
+    examples:
+      - text: "I eat bread for breakfast"
+        translation: "Tôi ăn bánh mì vào bữa sáng"
+      - text: "The bread is soft"
+        translation: "Bánh mì mềm quá"
+    related_objects: ["toast", "butter", "basket"]
+
+  - word: "egg"
+    pronunciation: "/eɡ/"
+    meaning_vi: "trứng"
+    examples:
+      - text: "I like fried eggs"
+        translation: "Tôi thích trứng rán"
+      - text: "The egg is round"
+        translation: "Quả trứng hình tròn"
+    related_objects: ["chicken", "frying pan", "shell"]
+
+  - word: "water"
+    pronunciation: "/ˈwɔːtə(r)/"
+    meaning_vi: "nước"
+    examples:
+      - text: "I drink water when I'm thirsty"
+        translation: "Tôi uống nước khi khát"
+      - text: "Water is healthy"
+        translation: "Nước rất tốt cho sức khỏe"
+    related_objects: ["glass", "bottle", "river"]
+
+  - word: "apple"
+    pronunciation: "/ˈæp(ə)l/"
+    meaning_vi: "quả táo"
+    examples:
+      - text: "An apple a day keeps the doctor away"
+        translation: "Một quả táo mỗi ngày giúp tránh xa bác sĩ"
+      - text: "This apple is sweet"
+        translation: "Quả táo này ngọt quá"
+    related_objects: ["tree", "red", "fruit"]
+
+  - word: "banana"
+    pronunciation: "/bəˈnɑːnə/"
+    meaning_vi: "quả chuối"
+    examples:
+      - text: "Monkeys like bananas"
+        translation: "Khỉ thích chuối"
+      - text: "The banana is yellow"
+        translation: "Quả chuối màu vàng"
+    related_objects: ["monkey", "yellow", "fruit", "peel"]
+
+  - word: "cake"
+    pronunciation: "/keɪk/"
+    meaning_vi: "bánh ngọt"
+    examples:
+      - text: "Happy birthday! Have some cake"
+        translation: "Chúc mừng sinh nhật! Ăn bánh nào"
+      - text: "The cake is delicious"
+        translation: "Cái bánh ngon quá"
+    related_objects: ["candle", "birthday", "sweet", "plate"]
+
+teaching_strategies:
+  - "Sử dụng đồ vật thật hoặc tranh ảnh để giới thiệu từ"
+  - "Hỏi 'Do you like...?' để tương tác"
+  - "Chơi trò Mystery Box: gợi ý rồi đoán tên món ăn"
+  - "Đóng vai đi mua đồ ăn ở cửa hàng"
+
+assessment_questions:
+  - question: "What do you drink when you are thirsty?"
+    correct_answers: ["water", "milk", "nước", "sữa"]
+  - question: "What fruit is yellow and monkeys love it?"
+    correct_answers: ["banana", "chuối"]
+  - question: "What do you eat with chopsticks?"
+    correct_answers: ["rice", "cơm"]
+  - question: "What do you put a candle on for birthday?"
+    correct_answers: ["cake", "bánh"]

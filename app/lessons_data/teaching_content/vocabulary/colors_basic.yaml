@@ -1,0 +1,80 @@
+topic_id: "colors_basic"
+title: "Basic Colors"
+level: "beginner"
+target_age: "3-6"
+duration_minutes: 10
+category: "vocabulary"
+
+learning_objectives:
+  - "Nhận biết và phát âm 5 màu cơ bản"
+  - "Liên kết màu với đồ vật quen thuộc"
+
+vocabulary:
+  - word: "red"
+    pronunciation: "/red/"
+    meaning_vi: "màu đỏ"
+    examples:
+      - text: "An apple is red"
+        translation: "Một quả táo màu đỏ"
+      - text: "I like red roses"
+        translation: "Tôi thích hoa hồng đỏ"
+    related_objects: ["apple", "rose", "heart", "strawberry"]
+    
+  - word: "blue"
+    pronunciation: "/bluː/"
+    meaning_vi: "màu xanh dương"
+    examples:
+      - text: "The sky is blue"
+        translation: "Bầu trời màu xanh"
+      - text: "The ocean is blue"
+        translation: "Đại dương màu xanh"
+    related_objects: ["sky", "ocean", "blueberry"]
+
+  - word: "yellow"
+    pronunciation: "/ˈjeləʊ/"
+    meaning_vi: "màu vàng"
+    examples:
+      - text: "The sun is yellow"
+        translation: "Mặt trời màu vàng"
+      - text: "A banana is yellow"
+        translation: "Một quả chuối màu vàng"
+    related_objects: ["sun", "banana", "duck"]
+
+  - word: "green"
+    pronunciation: "/ɡriːn/"
+    meaning_vi: "màu xanh lá cây"
+    examples:
+      - text: "The grass is green"
+        translation: "Cỏ màu xanh lá"
+      - text: "A frog is green"
+        translation: "Một con ếch màu xanh lá"
+    related_objects: ["grass", "frog", "leaf"]
+
+  - word: "orange"
+    pronunciation: "/ˈɒrɪndʒ/"
+    meaning_vi: "màu cam"
+    examples:
+      - text: "An orange is orange"
+        translation: "Quả cam thì màu cam"
+      - text: "The carrot is orange"
+        translation: "Củ cà rốt màu cam"
+    related_objects: ["orange fruit", "carrot", "pumpkin"]
+
+teaching_strategies:
+  - "Giới thiệu từng từ với ví dụ cụ thể và hình ảnh"
+  - "Yêu cầu học sinh lặp lại 2-3 lần"
+  - "Hỏi câu hỏi kiểm tra: 'What color is the [object]?'"
+  - "Khen ngợi nhiệt tình khi đúng"
+  - "Giải thích lại nếu sai, không trách mắng"
+
+assessment_questions:
+  - question: "What color is an apple?"
+    correct_answers: ["red", "đỏ"]
+  - question: "What color is the sky?"
+    correct_answers: ["blue", "xanh", "xanh dương"]
+  - question: "What color is the sun?"
+    correct_answers: ["yellow", "vàng"]
+  - question: "What color is the grass?"
+    correct_answers: ["green", "xanh lá"]
+  - question: "What color is a carrot?"
+    correct_answers: ["orange", "cam"]

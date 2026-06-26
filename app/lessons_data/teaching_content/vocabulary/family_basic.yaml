@@ -1,0 +1,72 @@
+topic_id: "family_basic"
+title: "My Family"
+level: "beginner"
+target_age: "3-6"
+duration_minutes: 10
+category: "vocabulary"
+
+learning_objectives:
+  - "Nhận biết và gọi tên 5 thành viên cơ bản trong gia đình"
+  - "Biết cách giới thiệu gia đình đơn giản"
+
+vocabulary:
+  - word: "mom"
+    pronunciation: "/mɒm/"
+    meaning_vi: "mẹ"
+    examples:
+      - text: "I love my mom"
+        translation: "Tôi yêu mẹ tôi"
+      - text: "Mom is cooking"
+        translation: "Mẹ đang nấu ăn"
+    related_objects: ["mother", "hug", "love"]
+
+  - word: "dad"
+    pronunciation: "/dæd/"
+    meaning_vi: "bố / ba"
+    examples:
+      - text: "My dad is tall"
+        translation: "Bố tôi cao"
+      - text: "Dad plays with me"
+        translation: "Bố chơi với tôi"
+    related_objects: ["father", "strong", "smile"]
+
+  - word: "sister"
+    pronunciation: "/ˈsɪstə(r)/"
+    meaning_vi: "chị / em gái"
+    examples:
+      - text: "She is my big sister"
+        translation: "Chị ấy là chị gái của tôi"
+      - text: "My sister is cute"
+        translation: "Em gái tôi rất dễ thương"
+    related_objects: ["doll", "share", "girl"]
+
+  - word: "brother"
+    pronunciation: "/ˈbrʌðə(r)/"
+    meaning_vi: "anh / em trai"
+    examples:
+      - text: "He is my little brother"
+        translation: "Nó là em trai của tôi"
+      - text: "My brother plays football"
+        translation: "Anh trai tôi chơi đá bóng"
+    related_objects: ["toy car", "boy", "play"]
+
+  - word: "baby"
+    pronunciation: "/ˈbeɪbi/"
+    meaning_vi: "em bé"
+    examples:
+      - text: "The baby is sleeping"
+        translation: "Em bé đang ngủ"
+      - text: "Look at the cute baby"
+        translation: "Nhìn em bé dễ thương kìa"
+    related_objects: ["milk bottle", "cradle", "cry"]
+
+teaching_strategies:
+  - "Sử dụng ảnh gia đình thực tế của học sinh nếu có"
+  - "Dùng cấu trúc câu 'This is my...'"
+  - "Trò chơi đóng vai các thành viên trong gia đình"
+
+assessment_questions:
+  - question: "Who is cooking in the kitchen?"
+    correct_answers: ["mom", "mẹ"]
+  - question: "Complete the phrase: I love my ..."
+    correct_answers: ["mom", "dad", "family", "mẹ", "bố"]

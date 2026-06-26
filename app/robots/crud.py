@@ -191,7 +191,11 @@ def get_robot_config(mac_address: str) -> Optional[RobotConfigInDB]:
                 llm_config=config_data.get('llm_config'),
                 tts_config=config_data.get('tts_config'),
                 stt_config=config_data.get('stt_config'),
+                interaction_mode=config_data.get('interaction_mode', 'free_talk'),
+                pipeline_name=config_data.get('pipeline_name', 'default'),
                 version=config_data.get('version', 1) if config_data.get('version') is not None else 1,
+                auto_start_lesson=config_data.get('auto_start_lesson', True),
+                game_difficulty=config_data.get('game_difficulty', 'easy'),
                 created_at=row['created_at'],
                 updated_at=row['updated_at']
             )
@@ -204,7 +208,10 @@ def update_robot_config(mac_address: str, config_update: RobotConfigUpdate) -> O
     current_config = get_robot_config(mac_address)
     if not current_config:
         # Create default config if it doesn't exist
-        current_config_data = {}
+        current_config_data = {
+            'interaction_mode': 'free_talk',
+            'version': 0
+        }
     else:
         # Convert current config to dict
         current_config_data = {
@@ -213,23 +220,20 @@ def update_robot_config(mac_address: str, config_update: RobotConfigUpdate) -> O
             'llm_config': current_config.llm_config,
             'tts_config': current_config.tts_config,
             'stt_config': current_config.stt_config,
-            'version': current_config.version + 1
+            'interaction_mode': current_config.interaction_mode,
+            'pipeline_name': current_config.pipeline_name,
+            'version': current_config.version,
+            'auto_start_lesson': current_config.auto_start_lesson,
+            'game_difficulty': current_config.game_difficulty,
         }
     
     # Update config with new values
-    if config_update.system_prompt is not None:
-        current_config_data['system_prompt'] = config_update.system_prompt
-    if config_update.voice_config is not None:
-        current_config_data['voice_config'] = config_update.voice_config
-    if config_update.llm_config is not None:
-        current_config_data['llm_config'] = config_update.llm_config
-    if config_update.tts_config is not None:
-        current_config_data['tts_config'] = config_update.tts_config
-    if config_update.stt_config is not None:
-        current_config_data['stt_config'] = config_update.stt_config
-    
+    update_dict = config_update.dict(exclude_unset=True)
+    for key, value in update_dict.items():
+        current_config_data[key] = value
+
     # Increment version
-    current_config_data['version'] = current_config_data.get('version', 1) + 1
+    current_config_data['version'] = current_config_data.get('version', 0) + 1
     
     # Save updated config
     with get_db_connection() as conn:
@@ -253,7 +257,11 @@ def update_robot_config(mac_address: str, config_update: RobotConfigUpdate) -> O
                 llm_config=current_config_data.get('llm_config'),
                 tts_config=current_config_data.get('tts_config'),
                 stt_config=current_config_data.get('stt_config'),
+                interaction_mode=current_config_data.get('interaction_mode'),
+                pipeline_name=current_config_data.get('pipeline_name'),
                 version=int(current_config_data.get('version', 1)),
+                auto_start_lesson=current_config_data.get('auto_start_lesson', True),
+                game_difficulty=current_config_data.get('game_difficulty', 'easy'),
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )

@@ -1,0 +1,105 @@
+topic_id: "daily_routines_basic"
+title: "Daily Routines"
+level: "beginner"
+target_age: "3-8"
+duration_minutes: 15
+category: "vocabulary"
+
+learning_objectives:
+  - "Biết gọi tên các hoạt động hằng ngày bằng tiếng Anh"
+  - "Có thể nói về buổi sáng và buổi tối của mình"
+
+vocabulary:
+  - word: "wake up"
+    pronunciation: "/weɪk ʌp/"
+    meaning_vi: "thức dậy"
+    examples:
+      - text: "I wake up at 6 o'clock"
+        translation: "Tôi thức dậy lúc 6 giờ"
+      - text: "Wake up, it's morning!"
+        translation: "Dậy đi, sáng rồi!"
+    related_objects: ["alarm clock", "sun", "bed"]
+
+  - word: "brush teeth"
+    pronunciation: "/brʌʃ tiːθ/"
+    meaning_vi: "đánh răng"
+    examples:
+      - text: "I brush my teeth every morning"
+        translation: "Tôi đánh răng mỗi sáng"
+      - text: "Brush your teeth before bed"
+        translation: "Đánh răng trước khi đi ngủ"
+    related_objects: ["toothbrush", "toothpaste", "sink"]
+
+  - word: "wash face"
+    pronunciation: "/wɒʃ feɪs/"
+    meaning_vi: "rửa mặt"
+    examples:
+      - text: "I wash my face with water"
+        translation: "Tôi rửa mặt bằng nước"
+      - text: "Wash your face after waking up"
+        translation: "Rửa mặt sau khi thức dậy"
+    related_objects: ["water", "towel", "soap"]
+
+  - word: "eat breakfast"
+    pronunciation: "/iːt ˈbrekfəst/"
+    meaning_vi: "ăn sáng"
+    examples:
+      - text: "I eat breakfast at 7 o'clock"
+        translation: "Tôi ăn sáng lúc 7 giờ"
+      - text: "Breakfast is ready!"
+        translation: "Bữa sáng đã sẵn sàng!"
+    related_objects: ["bread", "milk", "bowl", "spoon"]
+
+  - word: "go to school"
+    pronunciation: "/ɡəʊ tuː skuːl/"
+    meaning_vi: "đi học"
+    examples:
+      - text: "I go to school by bus"
+        translation: "Tôi đi học bằng xe buýt"
+      - text: "Time to go to school!"
+        translation: "Đến giờ đi học rồi!"
+    related_objects: ["school bus", "backpack", "book"]
+
+  - word: "eat dinner"
+    pronunciation: "/iːt ˈdɪnə(r)/"
+    meaning_vi: "ăn tối"
+    examples:
+      - text: "We eat dinner together"
+        translation: "Chúng tôi ăn tối cùng nhau"
+      - text: "Dinner is at 6 pm"
+        translation: "Bữa tối lúc 6 giờ"
+    related_objects: ["table", "plate", "family"]
+
+  - word: "take a bath"
+    pronunciation: "/teɪk ə bɑːθ/"
+    meaning_vi: "tắm"
+    examples:
+      - text: "I take a bath before bed"
+        translation: "Tôi tắm trước khi đi ngủ"
+      - text: "The bath is warm"
+        translation: "Nước tắm ấm quá"
+    related_objects: ["bathtub", "water", "soap", "towel"]
+
+  - word: "go to sleep"
+    pronunciation: "/ɡəʊ tuː sliːp/"
+    meaning_vi: "đi ngủ"
+    examples:
+      - text: "I go to sleep at 9 o'clock"
+        translation: "Tôi đi ngủ lúc 9 giờ"
+      - text: "Good night, time to sleep"
+        translation: "Chúc ngủ ngon, đến giờ ngủ rồi"
+    related_objects: ["bed", "pillow", "blanket", "moon"]
+
+teaching_strategies:
+  - "Học kèm hành động: vừa nói từ vừa làm động tác"
+  - "Hỏi học sinh 'What do you do in the morning?'"
+  - "Chơi Simon Says với các hành động hằng ngày"
+  - "Tạo thói quen kể về ngày của mình"
+
+assessment_questions:
+  - question: "What do you do first in the morning?"
+    correct_answers: ["wake up", "thức dậy"]
+  - question: "What do you do before going to school?"
+    correct_answers: ["eat breakfast", "brush teeth", "wash face", "ăn sáng", "đánh răng"]
+  - question: "What do you do before bed?"
+    correct_answers: ["take a bath", "brush teeth", "go to sleep", "tắm", "đánh răng", "đi ngủ"]

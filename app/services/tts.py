@@ -58,6 +58,59 @@ ELLIPSIS_RE = re.compile(r"\.{3,}")
 REPEATED_PUNCT_RE = re.compile(r"([!?]){2,}")
 EMOTION_TAG_RE = re.compile(r"\[emotion:[^\]]+\]\s*", re.IGNORECASE)
 
+COMMON_KIDS_EN_WORDS = {
+    # Greeting / Basic
+    "hello", "hi", "goodbye", "bye", "please", "thanks", "thank", "you", "welcome", "sorry",
+    # Family
+    "father", "mother", "brother", "sister", "baby", "family", "grandpa", "grandma", "parents",
+    # Colors
+    "red", "blue", "green", "yellow", "pink", "purple", "orange", "brown", "black", "white", "gray", "grey",
+    # Numbers
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    # Animals
+    "cat", "dog", "bird", "fish", "monkey", "lion", "elephant", "tiger", "bear", "rabbit", "pig", "cow",
+    "sheep", "duck", "chicken", "horse", "goat", "frog", "snake", "mouse", "bee", "ant", "spider", "turtle",
+    # Food & Drink
+    "milk", "bread", "water", "juice", "candy", "cookie", "cake", "ice", "cream", "pizza", "apple", "banana",
+    "orange", "pear", "peach", "grape", "lemon", "melon", "fruit", "egg", "rice", "soup", "fish", "meat",
+    # Body parts
+    "head", "face", "hair", "eye", "ear", "nose", "mouth", "tooth", "teeth", "tongue", "arm", "hand", "finger",
+    "leg", "foot", "feet", "toe", "body",
+    # Clothes
+    "shirt", "pants", "dress", "skirt", "socks", "shoes", "hat", "cap", "coat", "jacket",
+    # School / Toys
+    "book", "pen", "pencil", "ruler", "bag", "school", "teacher", "student", "class", "classroom", "desk", "chair",
+    "board", "toy", "ball", "doll", "car", "train", "plane", "boat", "bike", "bicycle", "kite", "balloon",
+    # House / Room
+    "home", "house", "room", "bedroom", "bathroom", "kitchen", "door", "window", "table", "bed", "sofa", "tv",
+    # Nature / Weather
+    "sun", "moon", "star", "flower", "tree", "leaf", "sky", "cloud", "rain", "snow", "wind", "storm",
+    "sunny", "rainy", "cloudy", "windy", "snowy", "hot", "cold", "warm", "cool",
+    # Adjectives
+    "happy", "sad", "angry", "scared", "sleepy", "tired", "hungry", "thirsty", "big", "small", "tall", "short",
+    "long", "fat", "thin", "good", "bad", "nice", "kind", "beautiful", "clean", "dirty",
+    # Verbs
+    "play", "run", "jump", "walk", "fly", "swim", "sing", "dance", "read", "write", "draw", "paint",
+    "eat", "drink", "sleep", "wake", "go", "come", "stop", "look", "see", "hear", "listen", "speak", "talk", "say",
+    # Pronouns / Common small words
+    "am", "is", "are", "was", "were", "be", "do", "does", "did", "have", "has", "had", "can", "will", "would",
+    "i", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them", "my", "his", "her", "our", "their",
+    "this", "that", "these", "those", "here", "there", "what", "who", "where", "when", "why", "how",
+    "in", "on", "at", "to", "for", "with", "about", "like", "love", "hate", "want", "need"
+}
+
+COMMON_VI_WORDS = {
+    "anh", "em", "con", "cho", "ba", "me", "ca", "co", "di", "lam", "mua", "hoa", "qua", "xanh", "cam", "va", "la",
+    "cai", "nay", "kia", "do", "dau", "sao", "the", "nao", "biet", "chua", "roi", "nhieu", "it", "to", "nho", "cao",
+    "thap", "ngan", "dai", "rong", "hep", "dep", "xau", "vui", "buon", "gi", "ai", "khi", "trong", "ngoai", "tren",
+    "duoi", "truoc", "sau", "giua", "ben", "trai", "phai", "mot", "hai", "bon", "nam", "sau", "bay", "tam", "chin",
+    "muoi", "an", "uong", "ngu", "chay", "di", "choi", "hoc", "viet", "doc", "noi", "nghe", "hat", "mua", "chao",
+    "xin", "tu", "tieng", "anh", "viet", "hoc", "sinh", "giao", "vien", "lop", "truong", "ban", "tôi", "minh", "ta",
+    "chung", "nguoi", "cung", "nhu", "nao", "sach", "vo", "but", "thu", "do", "choi", "qua", "tao", "oi", "le", "nho",
+    "chuoi", "khe", "dua", "du", "du", "keo", "banh", "com", "nuoc", "sua", "thit", "ca", "rau", "cu", "qua", "ga",
+    "vit", "lon", "bo", "trau", "cho", "meo", "chuot", "chim", "ca", "sau", "ran", "rua", "tho", "khi", "voi", "ho"
+}
+
 CLAUSE_SPLIT_RE = re.compile(r"([^.!?;:\n]+[.!?;:\n]?)", re.UNICODE)
 
 EN_PHRASE_RE = re.compile(
@@ -72,7 +125,7 @@ EN_PHRASE_RE = re.compile(
     |
     (?:
         \b[A-Za-z][A-Za-z0-9.+/_:-]*\b
-        (?:[ -]+\b[A-Za-z][A-Za-z0-9.+/_:-]*\b){1,8}
+        (?:[ -]+\b[A-Za-z][A-Za-z0-9.+/_:-]*\b){0,8}
     )
     """,
     re.VERBOSE,
@@ -757,6 +810,10 @@ class TTSService:
     def _looks_like_english_phrase(self, phrase: str, words: list[str]) -> bool:
         lower_words = [w.lower() for w in words]
 
+        # First, check if any word is in common Vietnamese unaccented words (blacklist)
+        if any(w in COMMON_VI_WORDS for w in lower_words):
+            return False
+
         strong_terms = {
             "openai", "chatgpt", "realtime", "api", "sdk", "websocket", "python",
             "typescript", "javascript", "postgresql", "mongodb", "mysql", "redis",
@@ -785,11 +842,24 @@ class TTSService:
 
         if len(words) == 1:
             token = words[0]
-            if token.lower() in strong_terms:
+            token_lower = token.lower()
+            if token_lower in strong_terms:
                 return True
             if token.isupper() and 2 <= len(token) <= 10:
                 return True
             if token[0].isupper() and len(token) >= 4:
+                return True
+            
+            # Additional logic for teaching English words:
+            if token_lower in COMMON_KIDS_EN_WORDS:
+                return True
+            if any(c in token_lower for c in "fjwz"):
+                return True
+            if re.search(r"([a-z])\1", token_lower):
+                return True
+            if len(token_lower) >= 3 and token_lower[-1] in "dglrsvb":
+                return True
+            if token_lower.endswith(("le", "ge", "se", "te", "ne", "de", "re", "ke", "ve", "house", "please", "name", "game")):
                 return True
 
         return False

@@ -173,7 +173,74 @@ def init_database():
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC)")
-    
+
+    # --- Lesson progress table (teaching mode persistence) ---
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lesson_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            robot_mac TEXT NOT NULL,
+            module_index INTEGER DEFAULT 0,
+            lesson_index INTEGER DEFAULT 0,
+            current_lesson_id INTEGER DEFAULT 0,
+            step_index INTEGER DEFAULT 0,
+            lesson_plan TEXT DEFAULT '[]',
+            teaching_topic_id TEXT,
+            completed_lessons TEXT DEFAULT '[]',
+            interaction_mode TEXT DEFAULT 'teaching',
+            player_name TEXT DEFAULT '',
+            intro_done TEXT DEFAULT '0',
+            onboarding_state TEXT DEFAULT '',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (robot_mac) REFERENCES robots(mac_address) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("PRAGMA table_info(lesson_progress)")
+    lesson_progress_cols = {row[1] for row in cursor.fetchall()}
+    lesson_progress_migrations = {
+        "current_lesson_id": "INTEGER DEFAULT 0",
+        "player_name": "TEXT DEFAULT ''",
+        "intro_done": "TEXT DEFAULT '0'",
+        "onboarding_state": "TEXT DEFAULT ''",
+    }
+    for col_name, col_def in lesson_progress_migrations.items():
+        if col_name not in lesson_progress_cols:
+            cursor.execute(f"ALTER TABLE lesson_progress ADD COLUMN {col_name} {col_def}")
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_lesson_progress_robot
+        ON lesson_progress(robot_mac)
+    """)
+
+    # --- Game profiles table (XP, levels, badges) ---
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS game_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            robot_mac TEXT UNIQUE NOT NULL,
+            total_xp INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1,
+            streak INTEGER DEFAULT 0,
+            max_streak INTEGER DEFAULT 0,
+            badges TEXT DEFAULT '[]',
+            completed_quests TEXT DEFAULT '[]',
+            completed_lessons TEXT DEFAULT '[]',
+            energy_gems INTEGER DEFAULT 0,
+            total_attempts INTEGER DEFAULT 0,
+            correct_attempts INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (robot_mac) REFERENCES robots(mac_address) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_game_profiles_robot
+        ON game_profiles(robot_mac)
+    """)
+
+    # Migrate: thêm columns mới cho robots table nếu chưa có
+    cursor.execute("PRAGMA table_info(robots)")
+    robot_cols_later = {row[1] for row in cursor.fetchall()}
+    for col_name in ("auto_start_lesson", "game_difficulty"):
+        if col_name not in robot_cols_later:
+            cursor.execute(f"ALTER TABLE robots ADD COLUMN {col_name} TEXT DEFAULT NULL")
+
     # Insert default admin user if not exists, lấy từ biến môi trường nếu có
     import os
     admin_username = os.environ.get("ADMIN_USERNAME", "admin")

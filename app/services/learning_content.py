@@ -136,7 +136,7 @@ def get_learning_payload() -> dict:
     }
 
 
-A1_ROADMAP_PATH = Path(__file__).parent.parent / "data" / "a1_roadmap.json"
+A1_ROADMAP_PATH = Path(__file__).parent.parent / "lessons_data" / "a1_roadmap.json"
 
 
 def get_a1_learning_roadmap() -> dict:
@@ -155,13 +155,17 @@ def get_a1_learning_roadmap() -> dict:
 def get_next_lesson_from_roadmap(current_lesson_id: int = 0) -> dict | None:
     """Gets the next lesson from the A1 roadmap based on the current lesson ID."""
     roadmap = get_a1_learning_roadmap()
-    if not roadmap or "units" not in roadmap:
+    if not roadmap:
         return None
 
     lessons = []
-    for unit in roadmap.get("units", []):
+    sections = roadmap.get("modules") or roadmap.get("units") or []
+    for unit in sections:
         for lesson in unit.get("lessons", []):
-            lessons.append(lesson)
+            normalized = dict(lesson)
+            if "topic_id" not in normalized and normalized.get("teaching_content_id"):
+                normalized["topic_id"] = normalized["teaching_content_id"]
+            lessons.append(normalized)
 
     if not lessons:
         return None

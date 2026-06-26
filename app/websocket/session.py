@@ -19,6 +19,7 @@ from app.services.stt import STTService
 from app.services.llm import LLMService
 from app.services.tts import TTSService
 from app.services.pipeline import ConversationPipeline
+from app.services.game_profile import GameProfile
 
 logger = get_logger(__name__)
 
@@ -56,6 +57,11 @@ class Session:
         self.is_idling = False
         self.last_idle_at: datetime | None = None
         self.aborted = False
+
+        # Game profile (XP, level, badges)
+        self.game_profile = GameProfile()
+
+        # Teaching learning context
         self.learning_context: dict[str, str | None] = {
             "mode": None,
             "topic_id": None,
@@ -65,6 +71,14 @@ class Session:
             "lock_target_index": "0",
             "attempt_count": "0",
             "seen_words": "",
+            "current_lesson_id": "0",
+            # Proactive teaching fields
+            "module_index": "0",
+            "lesson_index": "0",
+            "lesson_complete": "0",
+            "player_name": "",
+            "intro_done": "0",
+            "onboarding_state": "",
         }
 
         self._max_history = config.max_chat_history
@@ -77,6 +91,7 @@ class Session:
         self._last_speech_threshold = 0.0
         self._last_silence_threshold = 0.0
         self._last_rms_delta = 0.0
+        self._rms_history = []  # Lịch sử RMS để bám nhiễu động dạng sliding window
 
     @property
     def buffer_size(self) -> int:
@@ -114,10 +129,10 @@ class Session:
     def check_vad(
         self,
         pcm: bytes,
-        speech_threshold: int = 500,
-        silence_threshold: int = 260,
-        speech_frames_needed: int = 8,
-        silence_frames_needed: int = 10,
+        speech_threshold: int = 280,
+        silence_threshold: int = 180,
+        speech_frames_needed: int = 3,
+        silence_frames_needed: int = 12,
     ) -> str:
         """
         Phân tích năng lượng âm thanh, trả về trạng thái.
@@ -126,6 +141,9 @@ class Session:
         để xác nhận có người nói thật. Sau đó, nếu RMS < silence_threshold
         trong `silence_frames_needed` frames liên tiếp → trigger STT.
 
+        Sử dụng bộ lọc min-filter (sliding window) kết hợp chống nhiễu 
+        để tự thích ứng cực nhanh với tạp âm môi trường mà không bị kẹt.
+
         Returns:
             'speech': Đang nói
             'silence_after_speech': Im lặng sau khi đã nói → trigger STT
@@ -133,30 +151,27 @@ class Session:
         """
         rms = self._calc_rms(pcm)
 
-        # Ngưỡng tạm để quyết định có cập nhật noise floor hay không
-        pre_speech_gate = self._noise_floor_rms * 1.18 + 120.0 if self._noise_floor_rms > 0 else float(speech_threshold)
+        # 1. Cập nhật lịch sử RMS và tính toán Noise Floor động bằng 3rd-lowest (percentile lọc nhiễu)
+        self._rms_history.append(rms)
+        if len(self._rms_history) > 50:
+            self._rms_history.pop(0)
 
-        # Adaptive noise floor: theo dõi nền nhiễu nhưng không đuổi theo frame nghi là speech.
-        if self._noise_floor_rms <= 0:
-            self._noise_floor_rms = rms
-        else:
-            if not self._has_speech and rms > pre_speech_gate:
-                # Đang nghi có speech: freeze noise floor để không tự nâng ngưỡng.
-                pass
-            else:
-                # Hạ xuống nhanh hơn, tăng lên chậm hơn để bám nhiễu ổn định.
-                alpha = 0.06 if rms < self._noise_floor_rms else 0.015
-                capped = min(rms, self._noise_floor_rms * 1.08)
-                self._noise_floor_rms = (1.0 - alpha) * self._noise_floor_rms + alpha * capped
+        # Lấy giá trị nhỏ thứ 3 để triệt tiêu các mẫu dropout / frame lỗi đơn lẻ (RMS = 0)
+        sorted_history = sorted(self._rms_history)
+        self._noise_floor_rms = sorted_history[min(2, len(sorted_history) - 1)]
 
-        dynamic_speech_threshold = max(float(speech_threshold), self._noise_floor_rms * 1.18 + 120.0)
-        dynamic_silence_threshold = max(float(silence_threshold), self._noise_floor_rms * 1.08 + 60.0)
+        # 2. Tính toán ngưỡng speech và silence động thích ứng theo noise floor thực tế
+        dynamic_speech_threshold = max(float(speech_threshold), self._noise_floor_rms * 1.35 + 80.0)
+        dynamic_silence_threshold = max(float(silence_threshold), self._noise_floor_rms * 1.12 + 30.0)
+        
         rms_delta = rms - self._noise_floor_rms
         self._last_speech_threshold = dynamic_speech_threshold
         self._last_silence_threshold = dynamic_silence_threshold
         self._last_rms_delta = rms_delta
 
-        if rms > dynamic_speech_threshold and rms_delta > 120:
+        # 3. State machine cho VAD
+        # Chỉ nhận diện khi mức tăng RMS vượt hẳn 80 đơn vị so với noise floor
+        if rms > dynamic_speech_threshold and rms_delta > 80:
             self._silent_frames = 0
             self._speech_frames += 1
             if self._speech_frames >= speech_frames_needed:
@@ -164,16 +179,13 @@ class Session:
             return 'speech'
         elif rms > dynamic_silence_threshold:
             self._silent_frames = 0
-            # Chưa đủ mạnh để xác nhận speech: giảm dần bộ đếm để yêu cầu
-            # các frame "speech mạnh" phải gần như liên tiếp, tránh cộng dồn
-            # do nhiễu rời rạc.
+            # Nếu chưa chắc chắn là nói thật, giảm đếm để tránh nhiễu lắt nhắt cộng dồn
             if not self._has_speech and self._speech_frames > 0:
                 self._speech_frames -= 1
             return 'speech' if self._has_speech else 'silence'
         else:
             self._silent_frames += 1
             if not self._has_speech:
-                # Nếu vẫn chưa vào trạng thái speech thì reset hẳn bộ đếm.
                 self._speech_frames = 0
             if self._has_speech and self._silent_frames >= silence_frames_needed:
                 return 'silence_after_speech'

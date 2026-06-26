@@ -187,3 +187,35 @@ async def regenerate_otp_endpoint(
     if not otp:
         raise HTTPException(status_code=404, detail="Robot not found")
     return {"otp": otp, "message": f"New OTP generated for {mac_address}"}
+
+
+@router.post("/{mac_address}/lesson/reset")
+async def reset_lesson_progress_endpoint(
+    mac_address: str,
+    session: dict = Depends(require_viewer),
+):
+    """Reset toàn bộ tiến trình bài học của robot.
+    
+    Robot sẽ giới thiệu lại từ đầu, hỏi tên học sinh và bắt đầu lộ trình mới.
+    """
+    from ..database.lesson_progress import delete_lesson_progress
+    
+    robot = get_robot_by_mac(mac_address)
+    if not robot:
+        raise HTTPException(status_code=404, detail="Robot not found")
+
+    # Only owner or admin can reset
+    current_role = session.get("role", "viewer")
+    current_email = session.get("email", "")
+    if current_role != "admin" and robot.owner_username != current_email:
+        raise HTTPException(status_code=403, detail="Không có quyền reset bài học này")
+
+    try:
+        delete_lesson_progress(mac_address)
+        return {
+            "ok": True,
+            "message": f"Đã reset bài học cho robot {mac_address}. Robot sẽ giới thiệu lại từ đầu!",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset thất bại: {str(e)}")
+

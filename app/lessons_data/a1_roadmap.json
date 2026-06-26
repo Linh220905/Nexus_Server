@@ -1,0 +1,124 @@
+{
+  "title": "A1 English Learning Roadmap — Nexus Story Quest",
+  "description": "A foundational English learning roadmap for beginners, mapped to Nexus Planet story lands.",
+  "modules": [
+    {
+      "title": "Module 1: Greetings and Introductions",
+      "story_land": "greeting_grove",
+      "lessons": [
+        {
+          "title": "Lesson 1: Basic Greetings",
+          "description": "Learn to greet people and say goodbye.",
+          "teaching_content_id": "greetings_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Hello", "Hi", "Goodbye", "Bye", "Thank you", "Please", "Sorry"]
+        }
+      ]
+    },
+    {
+      "title": "Module 2: Family and Friends",
+      "story_land": "family_mountain",
+      "lessons": [
+        {
+          "title": "Lesson 1: Family Members",
+          "description": "Learn the names of common family members.",
+          "teaching_content_id": "family_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Mom", "Dad", "Sister", "Brother", "Baby"]
+        }
+      ]
+    },
+    {
+      "title": "Module 3: Colors and Numbers",
+      "story_land": "rainbow_falls",
+      "lessons": [
+        {
+          "title": "Lesson 1: Basic Colors",
+          "description": "Learn to name and identify basic colors.",
+          "teaching_content_id": "colors_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Red", "Blue", "Yellow", "Green", "Orange"]
+        },
+        {
+          "title": "Lesson 2: Numbers 1 to 10",
+          "description": "Learn to count from 1 to 10 in English.",
+          "teaching_content_id": "numbers_1_10",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"]
+        }
+      ]
+    },
+    {
+      "title": "Module 4: Animals",
+      "story_land": "animal_kingdom",
+      "lessons": [
+        {
+          "title": "Lesson 1: Basic Animals",
+          "description": "Learn the names of common animals.",
+          "teaching_content_id": "animals_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Cat", "Dog", "Bird", "Fish", "Rabbit"]
+        }
+      ]
+    },
+    {
+      "title": "Module 5: Daily Routines",
+      "story_land": "morning_valley",
+      "lessons": [
+        {
+          "title": "Lesson 1: Morning Routine",
+          "description": "Learn words for everyday morning activities.",
+          "teaching_content_id": "daily_routines_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Wake up", "Brush teeth", "Wash face", "Eat breakfast", "Go to school"]
+        },
+        {
+          "title": "Lesson 2: Evening Routine",
+          "description": "Learn words for evening activities.",
+          "teaching_content_id": "daily_routines_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Do homework", "Eat dinner", "Take a bath", "Read a book", "Go to sleep"]
+        }
+      ]
+    },
+    {
+      "title": "Module 6: Food and Drinks",
+      "story_land": "candy_island",
+      "lessons": [
+        {
+          "title": "Lesson 1: Basic Foods",
+          "description": "Learn the names of common foods and drinks.",
+          "teaching_content_id": "food_drinks_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Rice", "Milk", "Bread", "Egg", "Water", "Apple", "Banana", "Cake"]
+        }
+      ]
+    },
+    {
+      "title": "Module 7: Body and Clothes",
+      "story_land": "mirror_land",
+      "lessons": [
+        {
+          "title": "Lesson 1: Body Parts",
+          "description": "Learn the names of body parts and basic clothing items.",
+          "teaching_content_id": "body_clothes_basic",
+          "lesson_type": "vocabulary",
+          "vocabulary": ["Head", "Shoulder", "Knee", "Toe", "Hand", "Shirt", "Shoes", "Hat"]
+        }
+      ]
+    },
+    {
+      "title": "Module 8: Grand Review",
+      "story_land": "nexus_hq",
+      "lessons": [
+        {
+          "title": "Final Challenge: Boss Battle",
+          "description": "Review all vocabulary from previous modules in a fun boss battle format.",
+          "teaching_content_id": null,
+          "lesson_type": "review",
+          "vocabulary": []
+        }
+      ]
+    }
+  ]
+}

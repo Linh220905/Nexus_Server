@@ -1,0 +1,75 @@
+topic_id: "animals_basic"
+title: "Basic Animals"
+level: "beginner"
+target_age: "3-6"
+duration_minutes: 10
+category: "vocabulary"
+
+learning_objectives:
+  - "Nhận biết và phát âm đúng tên 5 con vật quen thuộc"
+  - "Mô tả hành động hoặc tiếng kêu đơn giản của con vật"
+
+vocabulary:
+  - word: "cat"
+    pronunciation: "/kæt/"
+    meaning_vi: "con mèo"
+    examples:
+      - text: "The cat says meow"
+        translation: "Con mèo kêu meo meo"
+      - text: "I see a little cat"
+        translation: "Tôi thấy một con mèo nhỏ"
+    related_objects: ["meow", "mouse", "yarn"]
+
+  - word: "dog"
+    pronunciation: "/dɒɡ/"
+    meaning_vi: "con chó"
+    examples:
+      - text: "The dog is barking"
+        translation: "Con chó đang sủa"
+      - text: "He has a pet dog"
+        translation: "Cậu ấy có một con chó cưng"
+    related_objects: ["bone", "bark", "puppy"]
+
+  - word: "bird"
+    pronunciation: "/bɜːd/"
+    meaning_vi: "con chim"
+    examples:
+      - text: "The bird can fly"
+        translation: "Con chim có thể bay"
+      - text: "A bird is singing"
+        translation: "Một con chim đang hót"
+    related_objects: ["nest", "wing", "sky"]
+
+  - word: "fish"
+    pronunciation: "/fɪʃ/"
+    meaning_vi: "con cá"
+    examples:
+      - text: "The fish can swim"
+        translation: "Con cá có thể bơi"
+      - text: "Goldfish live in water"
+        translation: "Cá vàng sống dưới nước"
+    related_objects: ["water", "aquarium", "pond"]
+
+  - word: "rabbit"
+    pronunciation: "/ˈræbɪt/"
+    meaning_vi: "con thỏ"
+    examples:
+      - text: "The rabbit hops"
+        translation: "Con thỏ nhảy lò cò"
+      - text: "Rabbits love carrots"
+        translation: "Thỏ rất thích cà rốt"
+    related_objects: ["carrot", "long ears", "hop"]
+
+teaching_strategies:
+  - "Sử dụng âm thanh tiếng kêu hoặc động tác mô phỏng của loài vật"
+  - "Khuyến khích trẻ bắt chước tiếng kêu và phát âm từ vựng"
+  - "Sử dụng flashcard hình ảnh sinh động"
+  - "Khen ngợi và thưởng sticker ảo khi trẻ nhớ bài"
+
+assessment_questions:
+  - question: "Which animal says meow?"
+    correct_answers: ["cat", "mèo"]
+  - question: "What can a fish do?"
+    correct_answers: ["swim", "bơi"]
+  - question: "What does a rabbit like to eat?"
+    correct_answers: ["carrot", "cà rốt"]

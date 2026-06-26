@@ -1,0 +1,93 @@
+topic_id: "numbers_1_10"
+title: "Numbers 1 to 10"
+level: "beginner"
+target_age: "3-6"
+duration_minutes: 15
+category: "vocabulary"
+
+learning_objectives:
+  - "Đếm từ 1 đến 10 bằng tiếng Anh"
+  - "Nhận biết số lượng vật thể tương ứng từ 1 đến 10"
+
+vocabulary:
+  - word: "one"
+    pronunciation: "/wʌn/"
+    meaning_vi: "số 1"
+    examples:
+      - text: "One sun"
+        translation: "Một mặt trời"
+    related_objects: ["1"]
+  - word: "two"
+    pronunciation: "/tuː/"
+    meaning_vi: "số 2"
+    examples:
+      - text: "Two eyes"
+        translation: "Hai con mắt"
+    related_objects: ["2"]
+  - word: "three"
+    pronunciation: "/θriː/"
+    meaning_vi: "số 3"
+    examples:
+      - text: "Three apples"
+        translation: "Ba quả táo"
+    related_objects: ["3"]
+  - word: "four"
+    pronunciation: "/fɔː(r)/"
+    meaning_vi: "số 4"
+    examples:
+      - text: "Four legs"
+        translation: "Bốn cái chân"
+    related_objects: ["4"]
+  - word: "five"
+    pronunciation: "/faɪv/"
+    meaning_vi: "số 5"
+    examples:
+      - text: "Five fingers"
+        translation: "Năm ngón tay"
+    related_objects: ["5"]
+  - word: "six"
+    pronunciation: "/sɪks/"
+    meaning_vi: "số 6"
+    examples:
+      - text: "Six stars"
+        translation: "Sáu ngôi sao"
+    related_objects: ["6"]
+  - word: "seven"
+    pronunciation: "/ˈsevn/"
+    meaning_vi: "số 7"
+    examples:
+      - text: "Seven colors"
+        translation: "Bảy sắc màu"
+    related_objects: ["7"]
+  - word: "eight"
+    pronunciation: "/eɪt/"
+    meaning_vi: "số 8"
+    examples:
+      - text: "Eight legs of an octopus"
+        translation: "Tám chân của con bạch tuộc"
+    related_objects: ["8"]
+  - word: "nine"
+    pronunciation: "/naɪn/"
+    meaning_vi: "số 9"
+    examples:
+      - text: "Nine balloons"
+        translation: "Chín quả bóng bay"
+    related_objects: ["9"]
+  - word: "ten"
+    pronunciation: "/ten/"
+    meaning_vi: "số 10"
+    examples:
+      - text: "Ten toes"
+        translation: "Mười ngón chân"
+    related_objects: ["10"]
+
+teaching_strategies:
+  - "Sử dụng ngón tay để đếm trực quan cùng trẻ"
+  - "Hát bài hát đếm số (ví dụ: Ten Little Indians)"
+  - "Đếm các đồ vật xung quanh lớp học"
+
+assessment_questions:
+  - question: "How many suns are there in the sky?"
+    correct_answers: ["one", "1"]
+  - question: "What number comes after four?"
+    correct_answers: ["five", "5"]

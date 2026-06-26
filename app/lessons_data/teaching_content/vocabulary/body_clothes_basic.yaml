@@ -1,0 +1,107 @@
+topic_id: "body_clothes_basic"
+title: "Body Parts and Clothes"
+level: "beginner"
+target_age: "3-8"
+duration_minutes: 12
+category: "vocabulary"
+
+learning_objectives:
+  - "Biết gọi tên 5 bộ phận cơ thể cơ bản"
+  - "Biết gọi tên 3 món quần áo quen thuộc"
+
+vocabulary:
+  - word: "head"
+    pronunciation: "/hed/"
+    meaning_vi: "cái đầu"
+    examples:
+      - text: "I have a head"
+        translation: "Tôi có một cái đầu"
+      - text: "Touch your head"
+        translation: "Chạm vào đầu của bạn"
+    related_objects: ["hair", "face", "hat"]
+
+  - word: "shoulder"
+    pronunciation: "/ˈʃəʊldə(r)/"
+    meaning_vi: "vai"
+    examples:
+      - text: "I carry a bag on my shoulder"
+        translation: "Tôi đeo túi trên vai"
+      - text: "Put your hands on your shoulders"
+        translation: "Đặt tay lên vai"
+    related_objects: ["arm", "backpack", "sleeve"]
+
+  - word: "knee"
+    pronunciation: "/niː/"
+    meaning_vi: "đầu gối"
+    examples:
+      - text: "I bend my knees to sit down"
+        translation: "Tôi cong đầu gối để ngồi xuống"
+      - text: "My knees are a little sore"
+        translation: "Đầu gối của tôi hơi đau"
+    related_objects: ["leg", "bend", "socks"]
+
+  - word: "toe"
+    pronunciation: "/təʊ/"
+    meaning_vi: "ngón chân"
+    examples:
+      - text: "I have ten toes"
+        translation: "Tôi có mười ngón chân"
+      - text: "Wiggle your toes!"
+        translation: "Nhúc nhích ngón chân nào!"
+    related_objects: ["foot", "shoe", "sock"]
+
+  - word: "hand"
+    pronunciation: "/hænd/"
+    meaning_vi: "bàn tay"
+    examples:
+      - text: "Wave your hand"
+        translation: "Vẫy tay nào"
+      - text: "I wash my hands before eating"
+        translation: "Tôi rửa tay trước khi ăn"
+    related_objects: ["finger", "glove", "wave", "hold"]
+
+  - word: "shirt"
+    pronunciation: "/ʃɜːt/"
+    meaning_vi: "áo sơ mi"
+    examples:
+      - text: "This shirt is blue"
+        translation: "Cái áo này màu xanh"
+      - text: "I wear a shirt to school"
+        translation: "Tôi mặc áo sơ mi đến trường"
+    related_objects: ["button", "collar", "sleeve", "clothes"]
+
+  - word: "shoes"
+    pronunciation: "/ʃuːz/"
+    meaning_vi: "giày"
+    examples:
+      - text: "I tie my shoes"
+        translation: "Tôi buộc dây giày"
+      - text: "These shoes are new"
+        translation: "Đôi giày này mới"
+    related_objects: ["lace", "foot", "socks", "walk"]
+
+  - word: "hat"
+    pronunciation: "/hæt/"
+    meaning_vi: "cái mũ"
+    examples:
+      - text: "I wear a hat in summer"
+        translation: "Tôi đội mũ vào mùa hè"
+      - text: "Put on your hat"
+        translation: "Đội mũ vào nào"
+    related_objects: ["head", "sun", "cap", "warm"]
+
+teaching_strategies:
+  - "Học kèm bài hát 'Head, Shoulders, Knees and Toes'"
+  - "Chơi Simon Says với các bộ phận cơ thể"
+  - "Chỉ vào đồ vật thật khi nói (shirt, shoes, hat)"
+  - "Học sinh vừa nói vừa chạm vào bộ phận/món đồ"
+
+assessment_questions:
+  - question: "What is on top of your body?"
+    correct_answers: ["head", "cái đầu"]
+  - question: "What do you wear on your feet?"
+    correct_answers: ["shoes", "socks", "giày"]
+  - question: "What do you wear on your head?"
+    correct_answers: ["hat", "mũ"]
+  - question: "What do you wave to say goodbye?"
+    correct_answers: ["hand", "bàn tay"]

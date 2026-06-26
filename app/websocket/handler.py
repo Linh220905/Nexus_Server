@@ -10,6 +10,8 @@ import struct
 import time
 import asyncio
 import os
+import wave
+from pathlib import Path
 from app.server_logging import get_logger
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -22,6 +24,9 @@ from app.robots.crud import get_robot_config, get_robot_by_mac, create_robot, up
 from app.database.chat_history import save_chat_session
 from app.database.assignments import get_latest_active_assignment_for_robot
 from app.robots.models import RobotCreate
+from app.services.teacher_proactive import ProactiveTeacher
+from app.services.game_profile import GameProfile
+from app.services.story_engine import get_land_by_module_index, get_land_intro
 
 logger = get_logger(__name__)
 mcp_tools = MCPToolRegistry()
@@ -184,8 +189,51 @@ async def handle_client(ws: WebSocket) -> None:
 
     # Auto register robot from ESP32 identity headers (Device-Id/Client-Id)
     _ensure_robot_registered(device_id, client_id)
-    
+
     logger.info(f"[{device_id}] Connected (protocol v{proto_version})")
+
+    # ── Load persisted progress from DB ──
+    try:
+        from app.database.lesson_progress import load_lesson_progress
+        saved = load_lesson_progress(device_id)
+        if saved:
+            # Merge saved learning context on top of defaults (keeps defaults for missing keys)
+            for k, v in saved.items():
+                session.learning_context[k] = v
+            logger.info(f"[{device_id}] Restored lesson progress: topic={saved.get('teaching_topic_id')}, "
+                        f"step={saved.get('teaching_step_index')}, module={saved.get('module_index')}")
+    except Exception as e:
+        logger.warning(f"[{device_id}] Failed to load lesson progress: {e}")
+
+    try:
+        from app.database.game_profile import load_game_profile
+        saved_gp = load_game_profile(device_id)
+        if saved_gp:
+            session.game_profile = saved_gp
+            logger.info(f"[{device_id}] Restored game profile: lv.{saved_gp.level} {saved_gp.total_xp}XP")
+    except Exception as e:
+        logger.warning(f"[{device_id}] Failed to load game profile: {e}")
+    # ─────────────────────────────────────
+
+    # ── Proactive teaching start ──
+    robot_config = get_robot_config(device_id)
+    if robot_config and robot_config.interaction_mode == "teaching":
+        try:
+            teacher = ProactiveTeacher(session.pipeline._llm)
+            opener = teacher.get_lesson_opener(session.learning_context, session.game_profile)
+            if opener:
+                logger.info(f"[{device_id}] Proactive opener: {opener[:60]}...")
+                # Save progress immediately so intro_done persists across reconnects
+                try:
+                    from app.database.lesson_progress import save_lesson_progress
+                    save_lesson_progress(device_id, session.learning_context)
+                    logger.info(f"[{device_id}] Saved intro_done={session.learning_context.get('intro_done')} to DB")
+                except Exception as save_err:
+                    logger.warning(f"[{device_id}] Failed to save opener progress: {save_err}")
+                asyncio.create_task(_proactive_say(session, opener))
+        except Exception as e:
+            logger.warning(f"[{device_id}] Proactive opener failed: {e}")
+    # ──────────────────────────────
 
     try:
         while True:
@@ -787,8 +835,31 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         chat_history = [{"role": "system", "content": robot_config.system_prompt}]
         chat_history.extend(session.chat_history[1:])  # Add the rest of the history without the original system message
 
+    # Attach game profile & device_id to pipeline for teaching mode
+    session.pipeline._game_profile = session.game_profile
+    session.pipeline._device_id = session.device_id
+
+    # Reward callback — fires when XP/badge earned in teaching mode
+    async def on_reward(reward_type: str, meta: dict | None = None) -> None:
+        """Gửi phần thưởng (ảnh + SFX) xuống ESP32."""
+        msg = (meta or {}).get("message", "")
+        show_img = bool(meta.get("show_image", True)) if meta else True
+        try:
+            await _send_reward(session, reward_type, message=msg, show_image=show_img)
+        except Exception as e:
+            logger.warning("[%s] Reward send error: %s", session.device_id, e)
+    session.pipeline._on_reward = on_reward
+
     try:
-        interaction_mode = robot_config.interaction_mode if robot_config else "free_talk"
+        pipeline_name = robot_config.pipeline_name if robot_config else "default"
+        if pipeline_name == "vietnamese_teacher":
+            interaction_mode = "teaching"
+        elif robot_config and robot_config.interaction_mode:
+            interaction_mode = robot_config.interaction_mode
+            session.learning_context["interaction_mode"] = interaction_mode
+        else:
+            interaction_mode = session.learning_context.get("interaction_mode", "free_talk")
+
         result = await session.pipeline.process(
             pcm_data,
             chat_history,
@@ -841,8 +912,215 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         session.reset_audio_buffer()
         logger.info(f"[{session.device_id}] Pipeline finished → reset state, ready for next utterance")
 
+        # ── Proactive teaching: continue lesson or suggest next ──
+        try:
+            if interaction_mode == "teaching" and not session.is_idling:
+                teacher = ProactiveTeacher(session.pipeline._llm)
+                # Small delay so ESP32 has time to switch back to listening
+                await asyncio.sleep(1.5)
+                if not session.aborted:
+                    asyncio.create_task(
+                        _proactive_continue_teaching(ws, session, teacher, interaction_mode)
+                    )
+        except Exception as e:
+            logger.warning(f"[{session.device_id}] Proactive continue failed: {e}")
+        # ────────────────────────────────────────────────────────────
+
+
+async def _proactive_say(session: Session, text: str) -> None:
+    """Gửi TTS proactive (khi không có pipeline). Dùng session hiện tại."""
+    ws = _session_ws.get(session.session_id)
+    if not ws or not text:
+        return
+
+    lock = _session_send_locks.get(session.session_id)
+    try:
+        if lock:
+            await lock.acquire()
+
+        session.is_speaking = True
+        session.is_idling = False
+
+        await ws.send_text(json.dumps(
+            {"type": "tts", "state": "start", "session_id": session.session_id},
+            ensure_ascii=False,
+        ))
+        await ws.send_text(json.dumps(
+            {"type": "tts", "state": "sentence_start", "text": text, "session_id": session.session_id},
+            ensure_ascii=False,
+        ))
+
+        async for opus_frame in session.pipeline._tts.synthesize(text):
+            if session.aborted:
+                break
+            await ws.send_bytes(opus_frame)
+            await asyncio.sleep(session.pipeline._tts.frame_duration_s * 0.95)
+
+        if not session.aborted:
+            await ws.send_text(json.dumps(
+                {"type": "tts", "state": "stop", "session_id": session.session_id},
+                ensure_ascii=False,
+            ))
+    except Exception as e:
+        logger.warning(f"[{session.device_id}] Proactive say error: {e}")
+    finally:
+        session.is_speaking = False
+        if lock and lock.locked():
+            try:
+                lock.release()
+            except Exception:
+                pass
+
+
+async def _proactive_continue_teaching(
+    ws: WebSocket, session: Session, teacher: ProactiveTeacher, interaction_mode: str
+) -> None:
+    """Tiếp tục bài học proactive sau 1 pipeline turn."""
+    try:
+        finished = session.learning_context.get("finished") == "1"
+        lesson_complete = session.learning_context.get("lesson_complete") == "1"
+
+        # Nếu lesson vừa hoàn thành hoặc chưa có gì → không làm gì
+        # (đợi user action hoặc sẽ được trigger ở lần pipeline sau)
+        if finished or lesson_complete:
+            return
+
+        # Đang giữa lesson → tiếp tục với step hiện tại
+        # Học sinh vừa trả lời xong → đánh giá và advance
+        # Việc này sẽ được xử lý trong pipeline.process ở lần tới
+        pass
+    except Exception as e:
+        logger.warning(f"[{session.device_id}] Proactive continue error: {e}")
+
 
 async def _send_json(ws: WebSocket, session: Session, data: dict) -> None:
     """Gửi JSON message kèm session_id."""
     data["session_id"] = session.session_id
     await ws.send_text(json.dumps(data, ensure_ascii=False))
+
+
+# ── Reward System ─────────────────────────────────────────────
+
+SFX_CACHE: dict[str, list[bytes]] = {}
+SFX_DIR = Path("static/asset/sfx")
+
+
+def _preload_sfx() -> dict[str, list[bytes]]:
+    """Load all WAV files from sfx directory → encode to Opus frames."""
+    if not SFX_DIR.exists():
+        logger.warning("SFX directory not found: %s", SFX_DIR)
+        return {}
+
+    cache = {}
+    for wav_file in SFX_DIR.glob("*.wav"):
+        try:
+            with wave.open(str(wav_file), "rb") as wf:
+                frames = wf.getnframes()
+                rate = wf.getframerate()
+                sampwidth = wf.getsampwidth()
+                nchannels = wf.getnchannels()
+                raw = wf.readframes(frames)
+
+            # Convert to mono int16 PCM 24kHz
+            import io
+            pcm_data = raw
+
+            # If not 24kHz mono int16 → convert
+            if nchannels != 1 or sampwidth != 2 or rate != 24000:
+                import subprocess
+                proc = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-loglevel", "error",
+                     "-f", "wav", "-i", "pipe:0",
+                     "-f", "s16le", "-ac", "1", "-ar", "24000", "pipe:1"],
+                    input=raw, capture_output=True, timeout=5,
+                )
+                if proc.returncode == 0 and proc.stdout:
+                    pcm_data = proc.stdout
+
+            # Load OpusEncoder from app
+            from app.audio.opus_codec import OpusEncoder
+            from app.config import AudioOutputConfig
+
+            enc = OpusEncoder(AudioOutputConfig())
+            encoded: list[bytes] = []
+            offset = 0
+            while offset + enc.frame_bytes <= len(pcm_data):
+                chunk = pcm_data[offset : offset + enc.frame_bytes]
+                encoded.append(enc.encode(chunk))
+                offset += enc.frame_bytes
+
+            name = wav_file.stem  # "xp", "levelup", etc.
+            cache[name] = encoded
+            logger.info("SFX loaded: %s (%d frames, %d opus packets)", name, frames, len(encoded))
+
+        except Exception as e:
+            logger.warning("SFX load failed for %s: %s", wav_file.name, e)
+
+    return cache
+
+
+async def _send_reward(
+    session: Session,
+    reward_type: str,
+    *,
+    message: str = "",
+    show_image: bool = True,
+) -> None:
+    """
+    Gửi phần thưởng (ảnh + âm thanh) xuống ESP32.
+
+    reward_type: "xp" | "levelup" | "badge" | "correct"
+    """
+    ws = _session_ws.get(session.session_id)
+    if not ws:
+        return
+
+    # 1. Gửi ảnh award nếu cần
+    if show_image:
+        try:
+            public_http_base = os.getenv("NEXUS_HTTP_BASE_URL", "").strip().rstrip("/")
+            if public_http_base:
+                image_url = f"{public_http_base}/static/asset/award_320.png"
+            else:
+                # Dùng scheme/host từ chính request
+                from urllib.parse import urlparse
+                parsed = urlparse(str(ws.url))
+                image_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}/static/asset/award_320.png"
+
+            await _send_json(ws, session, {
+                "type": "learning",
+                "state": "award",
+                "kind": reward_type,
+                "image_url": image_url,
+                "word": message,
+                "meaning": "",
+                "duration_ms": 2000,
+            })
+        except Exception as e:
+            logger.warning("Reward image send failed: %s", e)
+
+    # 2. Gửi Opus frames (SFX)
+    if not SFX_CACHE:
+        _preload_sfx()
+    sfx_frames = SFX_CACHE.get(reward_type)
+
+    if sfx_frames:
+        lock = _session_send_locks.get(session.session_id)
+        try:
+            if lock:
+                await lock.acquire()
+            for frame in sfx_frames:
+                await ws.send_bytes(frame)
+                await asyncio.sleep(0.054)
+        except Exception as e:
+            logger.warning("Reward audio send failed: %s", e)
+        finally:
+            if lock and lock.locked():
+                try:
+                    lock.release()
+                except Exception:
+                    pass
+
+
+# Preload SFXs on module load
+SFX_CACHE = _preload_sfx()

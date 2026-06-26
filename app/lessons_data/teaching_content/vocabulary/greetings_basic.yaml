@@ -1,0 +1,72 @@
+topic_id: "greetings_basic"
+title: "Basic Greetings"
+level: "beginner"
+target_age: "3-8"
+duration_minutes: 10
+category: "communication"
+
+learning_objectives:
+  - "Biết cách chào hỏi và tạm biệt lịch sự"
+  - "Biết nói lời cảm ơn, làm ơn và xin lỗi trong tình huống cụ thể"
+
+vocabulary:
+  - word: "hello"
+    pronunciation: "/həˈləʊ/"
+    meaning_vi: "xin chào"
+    examples:
+      - text: "Hello, teacher!"
+        translation: "Xin chào cô giáo ạ!"
+      - text: "Hello, my friend!"
+        translation: "Xin chào bạn của tôi!"
+    related_objects: ["wave", "smile"]
+
+  - word: "goodbye"
+    pronunciation: "/ˌɡʊdˈbaɪ/"
+    meaning_vi: "tạm biệt"
+    examples:
+      - text: "Goodbye, mom!"
+        translation: "Tạm biệt mẹ ạ!"
+      - text: "Time to go, goodbye!"
+        translation: "Đến giờ đi rồi, tạm biệt!"
+    related_objects: ["wave", "door"]
+
+  - word: "thank you"
+    pronunciation: "/θæŋk juː/"
+    meaning_vi: "cảm ơn"
+    examples:
+      - text: "Thank you for the candy"
+        translation: "Cảm ơn vì viên kẹo"
+      - text: "Thank you, dad"
+        translation: "Con cảm ơn bố"
+    related_objects: ["gift", "smile", "heart"]
+
+  - word: "please"
+    pronunciation: "/pliːz/"
+    meaning_vi: "làm ơn / vui lòng"
+    examples:
+      - text: "Give me the toy, please"
+        translation: "Làm ơn đưa cho tớ món đồ chơi với"
+      - text: "Sit down, please"
+        translation: "Xin vui lòng ngồi xuống"
+    related_objects: ["polite", "ask"]
+
+  - word: "sorry"
+    pronunciation: "/ˈsɒri/"
+    meaning_vi: "xin lỗi"
+    examples:
+      - text: "I am sorry I broke the toy"
+        translation: "Tớ xin lỗi vì làm hỏng đồ chơi"
+      - text: "Sorry, I am late"
+        translation: "Xin lỗi, con đến muộn"
+    related_objects: ["sad", "hug"]
+
+teaching_strategies:
+  - "Đóng vai các tình huống thực tế (tặng quà -> thank you, va vào bạn -> sorry)"
+  - "Dạy kèm theo các cử chỉ ngôn ngữ cơ thể (vẫy tay, khoanh tay cúi đầu)"
+  - "Tạo thói quen chào hỏi đầu và cuối giờ học"
+
+assessment_questions:
+  - question: "What do you say when you see your teacher in the morning?"
+    correct_answers: ["hello", "xin chào"]
+  - question: "What do you say when someone gives you a gift?"
+    correct_answers: ["thank you", "cảm ơn"]

@@ -36,7 +36,11 @@ class RobotConfigBase(BaseModel):
     tts_config: Optional[Dict[str, Any]] = None
     stt_config: Optional[Dict[str, Any]] = None
     interaction_mode: Optional[str] = "free_talk"
+    pipeline_name: Optional[str] = "default"
     version: int = 1
+    # Proactive teaching & gamification
+    auto_start_lesson: Optional[bool] = True
+    game_difficulty: Optional[str] = "easy"  # "easy" | "medium" | "hard"
 
 
 class RobotConfigCreate(RobotConfigBase):
@@ -50,6 +54,9 @@ class RobotConfigUpdate(BaseModel):
     tts_config: Optional[Dict[str, Any]] = None
     stt_config: Optional[Dict[str, Any]] = None
     interaction_mode: Optional[str] = None
+    pipeline_name: Optional[str] = None
+    auto_start_lesson: Optional[bool] = None
+    game_difficulty: Optional[str] = None
 
 
 class RobotConfigInDB(RobotConfigBase):

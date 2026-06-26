@@ -13,4 +13,5 @@ flow.png
 app/mcp/BaoThuc.mp3
 app/mcp/default_ringtone.wav
 static/firmware/
+static/asset/sfx/   # Generated WAV rewards (auto-regenerated)
 logs/
