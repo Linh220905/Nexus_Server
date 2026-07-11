@@ -212,6 +212,25 @@ EN_CHARACTER_TOKENS = {
     "GPT", "SQL",
 }
 
+# Giọng Anh dùng cho SSML <voice> tag khi đang trong chunk vi
+EN_SSML_VOICE_NAME = "en-US-Neural2-F"
+
+# Set các từ vựng tiếng Anh cần đọc giọng chuẩn dù đang trong câu Việt
+EN_VOCAB_SSML_SET = {w.lower() for w in COMMON_KIDS_EN_WORDS} | {
+    w.lower() for w in EN_ALIAS_MAP
+} | {
+    "hello", "goodbye", "please", "thank", "thanks",
+    "say", "repeat", "listen", "watch", "look",
+    "what", "where", "when", "why", "how",
+    "this", "that", "these", "those",
+    "is", "are", "am", "do", "does", "can", "will",
+    "question", "answer", "example", "word", "sentence",
+    "letter", "number", "color", "shape", "sound",
+    "next", "first", "second", "last", "again", "now",
+    "yes", "no", "correct", "wrong", "try", "ready",
+    "your", "turn", "my", "me", "you", "we", "they",
+}
+
 
 class TTSService:
     """Convert text to Opus audio frames using Google Cloud TTS."""
@@ -1014,7 +1033,12 @@ class TTSService:
         if lang == "en":
             text = self._normalize_english_pronunciation(text)
 
-        body = self._to_inline_ssml(text=text, lang=lang)
+        # Tiếng Việt: bọc từ vựng Anh trong <lang xml:lang='en-US'>
+        # để giữ giọng Việt nhưng phát âm từ Anh chuẩn hơn
+        if lang == "vi":
+            body = self._to_inline_ssml_with_en_lang(text)
+        else:
+            body = self._to_inline_ssml(text=text, lang=lang)
 
         if lang == "en":
             rate_pct = "89%"
@@ -1128,6 +1152,114 @@ class TTSService:
         joined = "".join(parts)
         joined = re.sub(r"\s{2,}", " ", joined).strip()
         return joined
+
+    def _to_inline_ssml_with_en_lang(self, text: str) -> str:
+        """
+        Build SSML body for Vietnamese text that contains English vocabulary.
+        English vocabulary words are wrapped in <lang xml:lang="en-US">...</lang>
+        so Google TTS pronounces them in English phonemes but keeps the SAME
+        Vietnamese voice — no jarring speaker switch, natural flow.
+
+        Words that look like proper names (Nexus, Greeting Grove) or non-vocabulary
+        English text are kept in Vietnamese voice.
+        Only recognised English vocabulary words (from COMMON_KIDS_EN_WORDS,
+        EN_ALIAS_MAP, and common teaching terms) get the <lang> annotation.
+        """
+        parts: list[str] = []
+        i = 0
+        n = len(text)
+
+        while i < n:
+            m_time = TIME_RE.match(text, i)
+            if m_time:
+                hh = m_time.group(1)
+                mm = m_time.group(2)
+                parts.append(f"<say-as interpret-as='time' format='hms12'>{hh}:{mm}:00</say-as>")
+                i = m_time.end()
+                continue
+
+            m_date = DATE_SLASH_RE.match(text, i)
+            if m_date:
+                dd, mm, yyyy = m_date.groups()
+                yyyy = yyyy if len(yyyy) == 4 else f"20{yyyy}"
+                parts.append(
+                    f"<say-as interpret-as='date' format='dmy'>{dd.zfill(2)}/{mm.zfill(2)}/{yyyy}</say-as>"
+                )
+                i = m_date.end()
+                continue
+
+            ch = text[i]
+
+            if ch == ",":
+                parts.append(", <break time='90ms'/>")
+                i += 1
+                continue
+            if ch == ";":
+                parts.append("; <break time='140ms'/>")
+                i += 1
+                continue
+            if ch == ":":
+                parts.append(": <break time='120ms'/>")
+                i += 1
+                continue
+            if ch in ".!?":
+                parts.append(html.escape(ch) + " <break time='220ms'/>")
+                i += 1
+                continue
+            if ch == "…":
+                parts.append("<break time='280ms'/>")
+                i += 1
+                continue
+            if ch == "\n":
+                parts.append("<break time='260ms'/>")
+                i += 1
+                continue
+
+            if ch.isalpha():
+                j = i
+                while j < n and (text[j].isalnum() or text[j] in "_-+./:#"):
+                    j += 1
+                token = text[i:j]
+                escaped = html.escape(token)
+
+                # Kiểm tra nếu token là từ vựng tiếng Anh cần giọng chuẩn
+                if self._should_use_en_voice(token):
+                    parts.append(
+                        f"<lang xml:lang='en-US'>{escaped}</lang>"
+                    )
+                else:
+                    parts.append(escaped)
+
+                i = j
+                continue
+
+            parts.append(html.escape(ch))
+            i += 1
+
+        joined = "".join(parts)
+        joined = re.sub(r"\s{2,}", " ", joined).strip()
+        return joined
+
+    def _should_use_en_voice(self, token: str) -> bool:
+        """Check if a token should be spoken with English voice."""
+        if not token or not token.isascii():
+            return False
+
+        token_lower = token.lower()
+
+        # Always use English voice for known vocabulary
+        if token_lower in EN_VOCAB_SSML_SET:
+            return True
+
+        # Character-by-character tokens (AI, API, etc.)
+        if token.upper() in EN_CHARACTER_TOKENS:
+            return True
+
+        # All-caps acronyms 2-10 chars
+        if token.isupper() and 2 <= len(token) <= 10:
+            return True
+
+        return False
 
     def _strip_wav_header_if_needed(self, data: bytes) -> bytes:
         if not data:

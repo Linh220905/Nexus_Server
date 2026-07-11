@@ -28,7 +28,7 @@ from app.services.learning_content import (
     build_conversation_lesson,
     get_next_lesson_from_roadmap,
 )
-from app.services.adaptive_teaching import AdaptiveTeachingEngine, TeachingStep
+from app.services.adaptive_teaching import AdaptiveTeachingEngine
 from app.services.teaching_content import get_teaching_content_service
 
 logger = get_logger(__name__)
@@ -58,14 +58,10 @@ class ProactiveTeacher:
         game_profile: GameProfile | None = None,
     ) -> str:
         """
-        Sinh câu nói mở đầu khi session bắt đầu ở teaching mode.
-        Nếu chưa có bài nào → kể intro + đề xuất bài đầu.
-        Nếu đang giữa lesson → tiếp tục.
-        Nếu lesson vừa xong → đề xuất bài kế.
+        Sinh câu nói mở đầu khi session bắt đầu.
+        Dựa trên state: intro→onboarding, active→continue, complete→next.
         """
-        module_idx = self._ctx_int(learning_context, "module_index")
-        lesson_idx = self._ctx_int(learning_context, "lesson_index")
-        finished = learning_context.get("finished") == "1"
+        state = str(learning_context.get("state") or "IDLE")
 
         if learning_context.get("intro_done") != "1":
             learning_context["intro_done"] = "1"
@@ -83,24 +79,57 @@ class ProactiveTeacher:
 
         player_name = self._ctx_str(learning_context, "player_name")
 
-        # Đã hoàn thành lesson, đề xuất bài kế
-        if finished:
-            next_lesson = get_next_lesson_from_roadmap(module_idx * 10 + lesson_idx + 1)
+        if state == "COMPLETE":
+            # Lesson vừa xong → đề xuất bài kế dùng current_lesson_id
+            current_lesson_id = self._ctx_int(learning_context, "current_lesson_id", 0)
+            next_lesson = get_next_lesson_from_roadmap(current_lesson_id + 1)
             if next_lesson:
-                land = get_land_by_module_index(module_idx + 1)
+                # Tìm land cho next lesson
+                from app.services.learning_content import get_a1_learning_roadmap
+                roadmap = get_a1_learning_roadmap()
+                modules = roadmap.get("modules") or roadmap.get("units") or []
+                flat_idx = -1
+                next_module_idx = 0
+                for mi, mod in enumerate(modules):
+                    for li in range(len(mod.get("lessons", []))):
+                        flat_idx += 1
+                        if flat_idx == current_lesson_id + 1:
+                            next_module_idx = mi
+                            break
+                    if flat_idx == current_lesson_id + 1:
+                        break
+                land = get_land_by_module_index(next_module_idx)
                 intro = get_land_intro(land["id"]) if land else ""
                 return (
-                    "🎉 Bài học trước bạn làm rất tốt! "
+                    f"🎉 Bài học trước {player_name} làm rất tốt! "
                     f"{intro} "
-                    "Bạn đã sẵn sàng chưa?"
+                    "Con đã sẵn sàng chưa?"
                 )
             else:
-                # Đã hoàn thành tất cả
                 from app.services.story_engine import STORY_OUTRO
                 return STORY_OUTRO
 
-        # Đang giữa lesson
+        # Đang ACTIVE → tiếp tục bài học
+        current_lesson_id = self._ctx_int(learning_context, "current_lesson_id", 0)
+        from app.services.learning_content import get_a1_learning_roadmap
+        roadmap = get_a1_learning_roadmap()
+        modules = roadmap.get("modules") or roadmap.get("units") or []
+        flat_idx = -1
+        module_idx = 0
+        for mi, mod in enumerate(modules):
+            for li in range(len(mod.get("lessons", []))):
+                flat_idx += 1
+                if flat_idx == current_lesson_id:
+                    module_idx = mi
+                    break
+            if flat_idx == current_lesson_id:
+                break
         land = get_land_by_module_index(module_idx)
+        land_name = land["name"] if land else ""
+        return (
+            f"Chào mừng trở lại {player_name}! Chúng ta đang ở {land_name}. "
+            "Hãy tiếp tục bài học nhé!"
+        )
         land_name = land["name"] if land else ""
         return (
             f"Chào mừng trở lại {player_name}! Chúng ta đang ở {land_name}. "
@@ -117,16 +146,13 @@ class ProactiveTeacher:
         is_aborted: Callable[[], bool],
     ) -> str | None:
         """
-        Tự động push bài học tiếp theo sau 1 lượt pipeline.
-        Gọi từ handler.py sau khi pipeline chính chạy xong.
-
-        Returns: text đã nói, None nếu hết lesson hoặc bị abort.
+        Sau 1 pipeline turn ở teaching mode, nếu lesson hoàn thành → đề xuất bài kế.
+        Nếu lesson còn đang dạy — pipeline nội bộ tự xử lý continuation rồi,
+        method này không làm gì thêm (tránh overlap).
         """
-        finished = learning_context.get("finished") == "1"
-        lesson_complete = learning_context.get("lesson_complete") == "1"
+        state = str(learning_context.get("state") or "IDLE")
 
-        if finished or lesson_complete:
-            # Bài học đã xong → đề xuất bài kế
+        if state == "COMPLETE" or learning_context.get("finished") == "1":
             opener = self.get_lesson_opener(learning_context, game_profile)
             if opener:
                 await self._speak_text(
@@ -135,65 +161,11 @@ class ProactiveTeacher:
                     on_tts_audio=on_tts_audio,
                     is_aborted=is_aborted,
                 )
-                # Reset lesson_complete cho lần tới
-                learning_context["lesson_complete"] = "0"
+                learning_context["finished"] = "0"
+                learning_context["state"] = "ACTIVE"
             return opener
 
-        # Còn step trong lesson hiện tại → tiếp tục
-        step_index = self._ctx_int(learning_context, "teaching_step_index")
-        try:
-            lesson_plan_json = str(learning_context.get("teaching_lesson_plan") or "[]")
-            lesson_plan_dicts = json.loads(lesson_plan_json)
-            if step_index < len(lesson_plan_dicts):
-                topic_id = self._ctx_str(learning_context, "teaching_topic_id")
-                topic = self._content_service.get_topic(topic_id) if topic_id else None
-                if not topic:
-                    return None
-
-                step = TeachingStep(lesson_plan_dicts[step_index]["step_type"],
-                                    lesson_plan_dicts[step_index]["data"])
-
-                # Sinh prompt có story flavor
-                land = get_land_by_module_index(
-                    self._ctx_int(learning_context, "module_index")
-                )
-                land_name = land["name"] if land else ""
-                xp = str(game_profile.total_xp) if game_profile else "0"
-                level = str(game_profile.level) if game_profile else "1"
-                streak = str(game_profile.streak) if game_profile else "0"
-
-                context_extra = (
-                    f"\nStory Context: You are in {land_name}.\n"
-                    f"Player XP: {xp}, Player level: {level}, "
-                    f"Correct streak: {streak}\n"
-                )
-
-                teaching_prompt = await self._adaptive.generate_teaching_prompt(
-                    step=step,
-                    topic=topic,
-                    student_response="[Proactive: continue]",
-                )
-
-                llm_response = await self._llm.chat_json(
-                    user_text=teaching_prompt + context_extra,
-                    system_prompt=TEACHING_SYSTEM_PROMPT,
-                )
-
-                if llm_response:
-                    from app.services.pipeline import ConversationPipeline
-                    response_language, _, reply_text = ConversationPipeline._parse_llm_tts_payload(llm_response)
-                    if reply_text:
-                        await self._speak_text(
-                            reply_text,
-                            on_tts_sentence=on_tts_sentence,
-                            on_tts_audio=on_tts_audio,
-                            is_aborted=is_aborted,
-                            language_hint=response_language,
-                        )
-                        return reply_text
-        except Exception as e:
-            logger.error(f"continue_teaching error: {e}", exc_info=True)
-
+        # Lesson còn ACTIVE — pipeline đã tự xử lý continuation
         return None
 
     # ─── Story & Game helpers ────────────────────────────────────

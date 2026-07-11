@@ -1,351 +1,173 @@
 """
-Adaptive Teaching Engine - Generate dynamic lesson plans and manage teaching flow.
+Adaptive Teaching Engine — Generates conversation prompts for teaching.
+
+No step machine. Each turn, LLM receives current_word, student_input,
+and conversation history. LLM decides advance + wait_for_student.
+Code only tracks word_index and enforces rules.
 """
+from __future__ import annotations
+
 import json
-from typing import Optional
+from typing import Any
+
 from app.server_logging import get_logger
-from app.services.llm import LLMService
+from app.services.scoring import FlexibleScoringEngine
 
 logger = get_logger(__name__)
 
 
-class TeachingStep:
-    """Represents a single step in the teaching process."""
-    
-    INTRO = "intro"
-    PRESENT_WORD = "present_word"
-    ASK_REPEAT = "ask_repeat"
-    ASSESS = "assess"
-    SUMMARY = "summary"
-    PRAISE = "praise"
-    CORRECT = "correct"
-
-    def __init__(self, step_type: str, data: dict):
-        self.step_type = step_type
-        self.data = data
-
-    def to_dict(self) -> dict:
-        return {
-            "step_type": self.step_type,
-            "data": self.data
-        }
-
-
 class AdaptiveTeachingEngine:
-    """Engine to generate and manage adaptive teaching flows."""
+    """Engine to build natural conversation prompts for vocabulary teaching."""
 
-    def __init__(self, llm_service: LLMService):
-        self._llm = llm_service
+    def __init__(self, llm_service=None):
+        self._scoring = FlexibleScoringEngine()
 
-    def generate_lesson_plan(self, topic: dict) -> list[TeachingStep]:
-        """
-        Generate a structured lesson plan from topic content.
-        
-        Args:
-            topic: Topic content dict from YAML
-            
-        Returns:
-            List of TeachingStep objects
-        """
-        steps = []
-        
-        # Step 1: Introduction
-        steps.append(TeachingStep(
-            TeachingStep.INTRO,
-            {
-                "title": topic.get("title", ""),
-                "learning_objectives": topic.get("learning_objectives", []),
-                "duration_minutes": topic.get("duration_minutes", 10)
-            }
-        ))
-        
-        # Steps 2-N: Present each vocabulary word
-        vocabulary = topic.get("vocabulary", [])
-        for idx, vocab_item in enumerate(vocabulary):
-            # Present word
-            steps.append(TeachingStep(
-                TeachingStep.PRESENT_WORD,
-                {
-                    "word": vocab_item.get("word", ""),
-                    "pronunciation": vocab_item.get("pronunciation", ""),
-                    "meaning_vi": vocab_item.get("meaning_vi", ""),
-                    "examples": vocab_item.get("examples", []),
-                    "related_objects": vocab_item.get("related_objects", []),
-                    "index": idx,
-                    "total": len(vocabulary)
-                }
-            ))
-            
-            # Ask student to repeat
-            steps.append(TeachingStep(
-                TeachingStep.ASK_REPEAT,
-                {
-                    "word": vocab_item.get("word", ""),
-                    "meaning_vi": vocab_item.get("meaning_vi", ""),
-                }
-            ))
-        
-        # Step N+1: Assessment
-        assessment_questions = topic.get("assessment_questions", [])
-        if assessment_questions:
-            steps.append(TeachingStep(
-                TeachingStep.ASSESS,
-                {
-                    "questions": assessment_questions
-                }
-            ))
-        
-        # Step N+2: Summary
-        steps.append(TeachingStep(
-            TeachingStep.SUMMARY,
-            {
-                "topic_title": topic.get("title", ""),
-                "vocabulary_count": len(vocabulary)
-            }
-        ))
-        
-        return steps
-
-    async def generate_teaching_prompt(
+    def build_teaching_prompt(
         self,
-        step: TeachingStep,
-        topic: dict,
-        student_response: str = "",
-        student_history: Optional[list[dict]] = None
+        *,
+        student_input: str,
+        current_word: str,
+        word_meaning: str,
+        word_examples: list[dict],
+        word_objects: list[str],
+        next_word: str | None = None,
+        next_word_meaning: str | None = None,
+        word_index: int = 0,
+        total_words: int = 1,
+        conversation_history: list[dict] | None = None,
+        land_name: str = "",
+        player_name: str = "",
     ) -> str:
         """
-        Generate a detailed prompt for LLM to respond as a teacher.
-        
-        Args:
-            step: Current teaching step
-            topic: Full topic content
-            student_response: What the student just said
-            student_history: Previous interactions (for context)
-            
-        Returns:
-            Formatted prompt string for LLM
+        Build the user_text portion of the LLM prompt.
+
+        Framed as a conversation, not a task instruction.
+        Code injects teaching context; LLM thinks it's having a natural chat.
         """
-        teaching_strategies = topic.get("teaching_strategies", [])
-        strategies_text = "\n".join(f"- {s}" for s in teaching_strategies)
-        
-        if step.step_type == TeachingStep.INTRO:
-            return f"""You are a friendly, enthusiastic English teacher for young children (age {topic.get('target_age', '3-6')}).
+        history_text = ""
+        if conversation_history:
+            recent = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+            lines = []
+            for msg in recent:
+                role = "Teacher" if msg.get("role") == "assistant" else "Student"
+                content = str(msg.get("content", "")).strip()
+                if content:
+                    lines.append(f"{role}: {content}")
+            if lines:
+                history_text = "\n".join(lines)
 
-**Current Task:** Introduce the lesson about "{step.data['title']}"
+        is_first_word = word_index == 0
+        is_last_word = word_index >= total_words - 1
 
-**Learning Objectives:**
-{chr(10).join(f"- {obj}" for obj in step.data['learning_objectives'])}
+        parts = []
 
-**Teaching Strategies:**
-{strategies_text}
-
-**Instructions:**
-- Greet the student warmly
-- Introduce the topic in an exciting way
-- Explain what we will learn today
-- Use simple, clear language
-- Be encouraging and positive
-
-**Student said:** "{student_response if student_response else '[Starting lesson]'}"
-
-**Respond as the teacher (in Vietnamese or English as appropriate):**"""
-
-        elif step.step_type == TeachingStep.PRESENT_WORD:
-            word_data = step.data
-            examples_text = "\n".join(
-                f"  - \"{ex['text']}\" ({ex.get('translation', '')})"
-                for ex in word_data.get('examples', [])
+        if not is_first_word and student_input and student_input != "__CONTINUATION__":
+            parts.append(
+                f"[Student just responded]\n"
+                f'"{student_input}"\n'
             )
-            
-            return f"""You are teaching the word: **{word_data['word']}**
 
-**Word Details:**
-- Pronunciation: {word_data.get('pronunciation', '')}
-- Meaning (Vietnamese): {word_data.get('meaning_vi', '')}
-- Examples:
-{examples_text}
-- Related objects: {', '.join(word_data.get('related_objects', []))}
+        parts.append(
+            f"[Current teaching target — keep teaching until student says it correctly]\n"
+            f"Word: \"{current_word}\" — meaning: {word_meaning}"
+        )
 
-**Progress:** Word {word_data.get('index', 0) + 1} of {word_data.get('total', 0)}
+        if word_examples:
+            ex = word_examples[0]
+            parts.append(f"Example: {ex.get('text', '')} ({ex.get('translation', '')})")
 
-**Teaching Strategies:**
-{strategies_text}
+        if word_objects:
+            parts.append(f"Related: {', '.join(word_objects[:3])}")
 
-**Instructions:**
-- Introduce the word clearly
-- Say the pronunciation
-- Give the Vietnamese meaning
-- Provide at least one example
-- Make it fun and engaging
-- Use objects/images references if helpful
+        if next_word and next_word_meaning:
+            parts.append(f"[Next word to introduce after this one: \"{next_word}\" ({next_word_meaning})]")
 
-**Student said:** "{student_response if student_response else '[Ready to learn]'}"
-
-**Respond as the teacher:**"""
-
-        elif step.step_type == TeachingStep.ASK_REPEAT:
-            return f"""You just taught the word: **{step.data['word']}** (meaning: {step.data['meaning_vi']})
-
-**Current Task:** Ask the student to repeat the word
-
-**Instructions:**
-- Encouragingly ask the student to say the word
-- Be gentle and supportive
-- You can say something like: "Now, can you say '{step.data['word']}'?" or "Let's practice together: '{step.data['word']}'"
-- Keep it simple and clear
-
-**Student said:** "{student_response if student_response else '[Waiting]'}"
-
-**Respond as the teacher:**"""
-
-        elif step.step_type == TeachingStep.ASSESS:
-            questions_text = "\n".join(
-                f"- {q['question']}" 
-                for q in step.data.get('questions', [])
+        if not is_first_word:
+            parts.append(
+                f"[Progress: word {word_index + 1} of {total_words}]"
             )
-            
-            return f"""**Assessment Time!**
 
-**Available Questions:**
-{questions_text}
+        if land_name and (is_first_word or word_index == 0):
+            parts.append(f"[Lesson is set in {land_name}]")
 
-**Instructions:**
-- Ask ONE assessment question to check understanding
-- Be encouraging
-- If the student answers correctly, praise them warmly
-- If incorrect, gently correct and explain
+        prompt = "\n".join(parts)
 
-**Student said:** "{student_response if student_response else '[Ready for quiz]'}"
+        if history_text:
+            prompt = f"[Recent conversation]\n{history_text}\n\n{prompt}"
 
-**Respond as the teacher:**"""
+        return prompt
 
-        elif step.step_type == TeachingStep.SUMMARY:
-            return f"""**Lesson Wrap-Up**
-
-**Topic:** {step.data.get('topic_title', '')}
-**Words Learned:** {step.data.get('vocabulary_count', 0)}
-
-**Instructions:**
-- Summarize what was learned today
-- Praise the student's effort and progress
-- Encourage continued practice
-- End with an enthusiastic, positive note
-
-**Student said:** "{student_response if student_response else '[Lesson complete]'}"
-
-**Respond as the teacher:**"""
-
-        elif step.step_type == TeachingStep.PRAISE:
-            return f"""**Great job!**
-
-The student said: "{student_response}"
-
-**Instructions:**
-- Give warm, specific praise
-- Acknowledge what they did well
-- Encourage them to continue
-- Be genuinely enthusiastic
-
-**Respond as the teacher:**"""
-
-        elif step.step_type == TeachingStep.CORRECT:
-            return f"""**Gentle Correction Needed**
-
-The student said: "{student_response}"
-Expected: {step.data.get('expected', '')}
-
-**Instructions:**
-- Gently explain what was incorrect
-- Provide the correct answer
-- Give another example
-- Encourage them to try again
-- Never be harsh or critical
-- End on a positive note
-
-**Respond as the teacher:**"""
-
-        return "Continue the lesson naturally as a supportive teacher."
-
-    async def evaluate_student_response(
+    def evaluate_with_backstop(
         self,
         student_text: str,
-        expected_answer: Optional[str] = None,
-        step_type: str = TeachingStep.ASK_REPEAT
+        expected_answer: str | None,
+        llm_advance: bool,
     ) -> dict:
         """
-        Evaluate if student's response is correct/appropriate.
-        
-        Args:
-            student_text: What the student said
-            expected_answer: What was expected (if applicable)
-            step_type: Type of current teaching step
-            
-        Returns:
-            Dict with evaluation results: {
-                "is_correct": bool,
-                "confidence": float,
-                "feedback": str
-            }
+        Scoring backstop: use FlexibleScoringEngine to validate LLM's advance decision.
+
+        Returns corrected decision:
+        - If scoring says clearly correct (>0.7) → force advance=true
+        - If scoring says clearly wrong (<0.3) → force advance=false
+        - Otherwise → respect LLM's decision (grey zone)
         """
-        if not student_text or not student_text.strip():
-            return {
-                "is_correct": False,
-                "confidence": 0.0,
-                "feedback": "No response detected"
-            }
-
-        # For repeat tasks, check if student said the word
-        if step_type == TeachingStep.ASK_REPEAT and expected_answer:
-            student_lower = student_text.lower().strip()
-            expected_lower = expected_answer.lower().strip()
-            
-            # Simple similarity check
-            if expected_lower in student_lower or student_lower in expected_lower:
-                return {
-                    "is_correct": True,
-                    "confidence": 0.9,
-                    "feedback": "Great pronunciation!"
-                }
-            
-            # Use LLM for more nuanced evaluation
-            try:
-                prompt = f"""Evaluate if the student's pronunciation attempt is acceptable.
-
-Expected word: "{expected_answer}"
-Student said: "{student_text}"
-
-Is this acceptable? Consider:
-- Similar pronunciation (phonetic similarity)
-- Vietnamese accent variations
-- Partial attempts
-
-Respond with JSON:
-{{"is_correct": true/false, "confidence": 0.0-1.0, "feedback": "brief comment"}}"""
-
-                result = await self._llm.chat_json(prompt, system_prompt="You are an evaluation assistant.")
-                if result and isinstance(result, dict):
-                    return result
-            except Exception as e:
-                logger.error(f"LLM evaluation failed: {e}")
-
-        # Default: student didn't match — don't auto-pass
-        return {
-            "is_correct": False,
-            "confidence": 0.0,
-            "feedback": "Hmm, chưa đúng lắm. Hãy thử lại nhé!"
+        result = {
+            "advance": llm_advance,
+            "confidence": 0.5,
+            "method": "llm_only",
         }
 
-    def get_next_step_index(
+        if not student_text or not expected_answer:
+            return result
+
+        score = self._scoring.score(student_text, expected_answer)
+
+        # Hard cutoff: clearly correct (threshold 0.75 như user yêu cầu)
+        if score.is_correct and score.confidence >= 0.75:
+            result["advance"] = True
+            result["confidence"] = score.confidence
+            result["method"] = "backstop_forced_correct"
+            return result
+
+        # Hard cutoff: clearly wrong
+        if score.confidence < 0.30:
+            result["advance"] = False
+            result["confidence"] = score.confidence
+            result["method"] = "backstop_forced_wrong"
+            return result
+
+        # Grey zone: respect LLM
+        result["advance"] = llm_advance
+        result["confidence"] = score.confidence
+        result["method"] = "llm_decided"
+        return result
+
+    def student_input_is_valid(self, raw_input: str | None) -> bool:
+        """Check if student actually said something meaningful."""
+        if not raw_input:
+            return False
+        text = raw_input.strip()
+        if not text or text == "__CONTINUATION__":
+            return False
+        if len(text) < 2:
+            return False
+        # Filter pure noise/hesitation
+        noise = {"um", "uh", "ah", "er", "hmm", "mm", "mhm", "ưm", "à", "ờ", "ừ"}
+        if text.lower() in noise:
+            return False
+        return True
+
+    def get_next_teaching_word(
         self,
+        words: list[dict],
         current_index: int,
-        total_steps: int,
-        skip_forward: bool = False
-    ) -> int:
-        """Calculate next step index based on current progress."""
-        if skip_forward:
-            return min(current_index + 2, total_steps - 1)
-        return min(current_index + 1, total_steps - 1)
+        direction: int = 1,
+    ) -> dict | None:
+        """Get the next word without advancing the index (LLM doesn't control index)."""
+        next_idx = current_index + direction
+        if 0 <= next_idx < len(words):
+            return words[next_idx]
+        return None
 
     def is_lesson_complete(self, current_index: int, total_steps: int) -> bool:
-        """Check if the lesson is complete."""
         return current_index >= total_steps - 1

@@ -201,7 +201,7 @@ async def handle_client(ws: WebSocket) -> None:
             for k, v in saved.items():
                 session.learning_context[k] = v
             logger.info(f"[{device_id}] Restored lesson progress: topic={saved.get('teaching_topic_id')}, "
-                        f"step={saved.get('teaching_step_index')}, module={saved.get('module_index')}")
+                        f"lesson={saved.get('current_lesson_id')}")
     except Exception as e:
         logger.warning(f"[{device_id}] Failed to load lesson progress: {e}")
 
@@ -331,14 +331,14 @@ _pipeline_triggered: set[str] = set()  # Chặn trigger pipeline nhiều lần
 _pipeline_finished_at: dict[str, float] = {}  # Timestamp khi pipeline kết thúc
 
 IDLE_TIMEOUT_FRAMES = 1000  
-LOW_RMS_THRESHOLD_MIN = 700
-LOW_RMS_FRAMES = 90
+LOW_RMS_THRESHOLD_MIN = 400
+LOW_RMS_FRAMES = 15
 RMS_MARGIN_MIN = 500
 RMS_MARGIN_MAX = 1500
-RMS_SPIKE_DELTA = 3000
-HIGH_RMS_FRAMES = 5  # >5 frames mới xác nhận có người nói
-POST_HIGH_SILENCE_FRAMES = 8
-COOLDOWN_SECONDS = 1.5  # Bỏ qua audio residual sau khi pipeline xong
+RMS_SPIKE_DELTA = 800
+HIGH_RMS_FRAMES = 3  # >3 frames mới xác nhận có người nói
+POST_HIGH_SILENCE_FRAMES = 5
+COOLDOWN_SECONDS = 0  # Không cooldown — is_speaking đã bảo vệ echo tốt hơn
 MAX_UTTERANCE_FRAMES = 260  # ~15.6s @ 60ms/frame
 
 
@@ -385,18 +385,28 @@ def _update_rms_baseline(session_id: str, rms: float, *, freeze: bool) -> tuple[
 
 def _on_binary(ws: WebSocket, session: Session, data: bytes, proto_version: int) -> None:
     """Parse binary audio frame, thêm vào buffer, check VAD."""
-    # Đang chạy pipeline thì bỏ qua frame mới để tránh tích lũy buffer vô hạn.
-    if session.session_id in _pipeline_triggered:
+    sid = session.session_id
+
+    # Pipeline đang chạy: TTS còn → drop (echo protection)
+    # TTS đã xong → accumulate vào _pcm_buffer (finally sẽ giữ nếu có data)
+    if sid in _pipeline_triggered:
+        if session.is_speaking:
+            return
+        opus_data = _extract_opus_payload(data, proto_version)
+        if opus_data:
+            pcm = session._decoder.decode(opus_data)
+            if pcm:
+                session._pcm_buffer.extend(pcm)
         return
 
+    # Pipeline vừa kết thúc, trong cooldown (tránh thu tiếng residual)
     now = time.monotonic()
-    finished_at = _pipeline_finished_at.get(session.session_id)
+    finished_at = _pipeline_finished_at.get(sid)
     if finished_at is not None and (now - finished_at) < COOLDOWN_SECONDS:
         return
 
-    # Khi đã vào idle hoặc server đang phát TTS thì bỏ qua audio.
-    # Tránh thu lại tiếng loa của chính thiết bị và trigger STT lặp.
-    if session.is_idling or session.is_speaking:
+    # Đang idle → bỏ qua audio
+    if session.is_idling:
         return
 
     opus_data = _extract_opus_payload(data, proto_version)
@@ -744,7 +754,7 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         tts_sentence_count += 1
         payload = {"type": "tts", "state": "sentence_start", "text": text}
         action = _build_tts_action(current_tts_emotion)
-        if action and not tts_action_sent and tts_sentence_count >= 2:
+        if action and not tts_action_sent and tts_sentence_count >= 1:
             payload["action"] = action
             tts_action_sent = True
         await safe_send_json(payload)
@@ -760,6 +770,8 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
 
     async def on_tts_stop() -> None:
         await safe_send_json({"type": "tts", "state": "stop"})
+        # Cho phép collect audio ngay khi TTS xong — trẻ có thể trả lời liền
+        session.is_speaking = False
 
     async def on_learning_card(payload: dict) -> None:
         image_url = payload.get("image_url")
@@ -909,8 +921,16 @@ async def _run_pipeline(ws: WebSocket, session: Session) -> None:
         _high_rms_armed.discard(session.session_id)
         _rms_baseline_avg.pop(session.session_id, None)
         _rms_noise_jitter.pop(session.session_id, None)
-        session.reset_audio_buffer()
-        logger.info(f"[{session.device_id}] Pipeline finished → reset state, ready for next utterance")
+
+        # Nếu có audio accumulate (trẻ nói lúc post-processing) → trigger pipeline ngay
+        accumulated = session.buffer_size
+        if accumulated >= 3200:
+            _pipeline_triggered.add(session.session_id)
+            logger.info(f"[{session.device_id}] Triggering pipeline with {accumulated}B accumulated during TTS")
+            asyncio.create_task(_run_pipeline(ws, session))
+        else:
+            session.reset_audio_buffer()
+            logger.info(f"[{session.device_id}] Pipeline finished → reset, ready for next utterance")
 
         # ── Proactive teaching: continue lesson or suggest next ──
         try:
@@ -950,7 +970,7 @@ async def _proactive_say(session: Session, text: str) -> None:
             ensure_ascii=False,
         ))
 
-        async for opus_frame in session.pipeline._tts.synthesize(text):
+        async for opus_frame in session.pipeline._tts.synthesize(text, language_hint="vi"):
             if session.aborted:
                 break
             await ws.send_bytes(opus_frame)

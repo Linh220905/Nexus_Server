@@ -28,7 +28,7 @@ from app.services.flashcard_vocab import (
     get_flashcard_by_word,
 )
 from app.services.teaching_content import get_teaching_content_service
-from app.services.adaptive_teaching import AdaptiveTeachingEngine, TeachingStep
+from app.services.adaptive_teaching import AdaptiveTeachingEngine
 from app.services.game_profile import GameProfile
 from app.database.lesson_progress import save_lesson_progress, mark_lesson_completed
 from app.database.game_profile import save_game_profile
@@ -722,8 +722,7 @@ class ConversationPipeline:
         learning_context["current_lesson_id"] = "0"
         # Also clear teaching-specific fields so a completed lesson doesn't re-trigger
         learning_context["teaching_topic_id"] = None
-        learning_context["teaching_step_index"] = "0"
-        learning_context["teaching_lesson_plan"] = "[]"
+        learning_context["word_index"] = "0"
 
     @staticmethod
     def _is_flashcard_vocab_active(learning_context: dict[str, str | None]) -> bool:
@@ -864,7 +863,7 @@ class ConversationPipeline:
             spoken_lines.append(speech)
             await on_tts_sentence(speech)
             await self._send_frames_with_pacing(
-                self._tts.synthesize(speech),
+                self._tts.synthesize(speech, language_hint="vi"),
                 on_tts_audio=on_tts_audio,
                 is_aborted=is_aborted,
             )
@@ -995,275 +994,401 @@ class ConversationPipeline:
         game_profile: GameProfile | None = None,
         device_id: str | None = None,
     ) -> str:
-        """Adaptive teaching mode with story + gamification."""
+        """
+        Adaptive teaching — LLM-driven conversation.
 
-        # Initialize teaching services
+        Flow:
+        1. Load lesson + current word from learning_context
+        2. Build conversation prompt (inject current_word, history, student_input)
+        3. Call LLM → parse {text, emotion, language, advance, wait_for_student}
+        4. Scoring backstop validates advance decision
+        5. Speak the response
+        6. If advance=true: word_index += 1
+        7. If all words done: advance to next roadmap lesson
+        8. If wait_for_student=true: return (pipeline ends, wait for student)
+        9. If wait_for_student=false: continue recursively (robot keeps talking)
+        """
         content_service = get_teaching_content_service()
-        teaching_engine = AdaptiveTeachingEngine(self._llm)
+        teaching_engine = AdaptiveTeachingEngine()
 
-        # Build story context for LLM prompt
+        # ── Onboarding: name extraction ──
+        if learning_context.get("onboarding_state") == "asked_name":
+            return await self._handle_onboarding(
+                user_text, content_service,
+                learning_context, device_id,
+                on_tts_sentence, on_tts_audio, is_aborted,
+            )
+
+        # ── Ensure active topic ──
+        if not learning_context.get("teaching_topic_id"):
+            await self._init_lesson(learning_context, user_text, content_service, device_id)
+
+        topic_id = str(learning_context.get("teaching_topic_id") or "")
+        topic = content_service.get_topic(topic_id) if topic_id else None
+        if not topic:
+            reply = "Xin lỗi, chưa có nội dung giảng dạy nào được tải."
+            await self._speak_text(reply, on_tts_sentence=on_tts_sentence, on_tts_audio=on_tts_audio, is_aborted=is_aborted, language_hint="vi")
+            return reply
+
+        words = topic.get("vocabulary") or []
+        if not words:
+            reply = "Bài học chưa có từ vựng. Hãy chọn bài khác nhé!"
+            await self._speak_text(reply, on_tts_sentence=on_tts_sentence, on_tts_audio=on_tts_audio, is_aborted=is_aborted, language_hint="vi")
+            return reply
+
+        word_index = self._ctx_word_index(learning_context)
+        total_words = len(words)
+
+        # ── Lesson complete check ──
+        if word_index >= total_words:
+            await self._advance_to_next_lesson(
+                learning_context, topic_id, device_id, content_service,
+                on_tts_sentence, on_tts_audio, is_aborted,
+            )
+            return ""
+
+        current_vocab = words[word_index]
+        next_vocab = teaching_engine.get_next_teaching_word(words, word_index)
+
+        # ── Get land/module context ──
+        current_lesson_id = self._context_current_lesson_id(learning_context)
+        from app.services.learning_content import get_a1_learning_roadmap
         from app.services.story_engine import get_land_by_module_index
-        module_idx = int(learning_context.get("module_index", 0))
+        roadmap = get_a1_learning_roadmap()
+        modules = roadmap.get("modules") or roadmap.get("units") or []
+        flat_idx = -1
+        module_idx = 0
+        for mi, mod in enumerate(modules):
+            for li in range(len(mod.get("lessons", []))):
+                flat_idx += 1
+                if flat_idx == current_lesson_id:
+                    module_idx = mi
+                    break
+            if flat_idx == current_lesson_id:
+                break
         land = get_land_by_module_index(module_idx)
         land_name = land["name"] if land else ""
+
+        is_continuation = user_text.strip() == "__CONTINUATION__"
+        valid_input = teaching_engine.student_input_is_valid(user_text)
+
+        # ── Track attempts on this word ──
+        attempt_raw = learning_context.get("_fail_count", "0")
+        try:
+            fail_count = int(attempt_raw)
+        except (ValueError, TypeError):
+            fail_count = 0
+        if valid_input and not is_continuation:
+            fail_count += 1
+        attempt_hint = f"\n[Attempt {fail_count} of 3]" if fail_count > 0 else ""
+
+        # ── Conversation history for context (prevents repetition) ──
+        if not hasattr(self, '_teaching_history'):
+            self._teaching_history = []
+        conv_history = self._teaching_history
+
+        # ── Build conversation prompt ──
+        prompt = teaching_engine.build_teaching_prompt(
+            student_input=user_text,
+            current_word=str(current_vocab.get("word", "")),
+            word_meaning=str(current_vocab.get("meaning_vi", "")),
+            word_examples=current_vocab.get("examples", []),
+            word_objects=current_vocab.get("related_objects", []),
+            next_word=str(next_vocab.get("word", "")) if next_vocab else None,
+            next_word_meaning=str(next_vocab.get("meaning_vi", "")) if next_vocab else None,
+            word_index=word_index,
+            total_words=total_words,
+            conversation_history=conv_history[-6:] if not is_continuation else None,
+            land_name=land_name if word_index == 0 else "",
+            player_name=str(learning_context.get("player_name") or ""),
+        )
+
         xp_str = str(game_profile.total_xp) if game_profile else "0"
         level_str = str(game_profile.level) if game_profile else "1"
         streak_str = str(game_profile.streak) if game_profile else "0"
+        story_note = f"\n[Story: Land={land_name}, XP={xp_str}, Level={level_str}, Streak={streak_str}]{attempt_hint}"
 
-        story_context = (
-            f"\nStory Context:\n"
-            f"- Current Land: {land_name}\n"
-            f"- Player XP: {xp_str}\n"
-            f"- Player Level: {level_str}\n"
-            f"- Correct Streak: {streak_str}\n"
+        # ── Call LLM ──
+        llm_response = await self._llm.chat_json(
+            user_text=prompt + story_note,
+            system_prompt=TEACHING_SYSTEM_PROMPT,
         )
 
-        # Onboarding: Check if we just asked for the student's name
-        if learning_context.get("onboarding_state") == "asked_name":
-            # Trích xuất tên từ câu nói của bé (vd: "Con là Linh", "Linh", "Tớ là Nam")
-            name_clean = user_text.strip()
-            
-            # Loại bỏ các tiền tố phổ biến trong khẩu ngữ nói tên
-            prefixes = [
-                "tên con là", "tên tớ là", "tên mình là", "tên em là", "con tên là", 
-                "tớ tên là", "mình tên là", "em tên là", "mình là", "tớ là", "con là", 
-                "em là", "tên là", "là"
-            ]
-            for p in prefixes:
-                if name_clean.lower().startswith(p):
-                    name_clean = name_clean[len(p):].strip()
-                    break
-            
-            # Dọn dẹp dấu câu thừa ở cuối tên
-            name_clean = name_clean.rstrip(".?!,")
-            words = name_clean.split()
-            
-            if len(words) > 3:
-                # Nếu câu quá dài, gọi LLM trích xuất tên chính xác
-                try:
-                    extract_prompt = f"Trích xuất tên của học sinh từ câu nói sau. Chỉ trả về duy nhất tên riêng của bé, không thêm bất kỳ từ nào khác. Câu nói: \"{user_text}\""
-                    name_extracted = await self._llm.chat_json(extract_prompt, system_prompt="Bạn là trợ lý trích xuất tên riêng.")
-                    if isinstance(name_extracted, dict) and name_extracted.get("name"):
-                        name_clean = str(name_extracted.get("name"))
-                    elif isinstance(name_extracted, str) and name_extracted:
-                        name_clean = name_extracted
-                except Exception:
-                    name_clean = words[-1]
-            
-            player_name = name_clean.title() if name_clean else "Nhà thám hiểm"
-            learning_context["player_name"] = player_name
-            learning_context["onboarding_state"] = ""
-            
-            # Gán chủ đề học đầu tiên (greetings_basic của Greeting Grove)
-            matched_topic = content_service.get_topic("greetings_basic") or content_service.get_topic("colors_basic")
-            if matched_topic:
-                learning_context["teaching_topic_id"] = matched_topic["topic_id"]
-                learning_context["teaching_step_index"] = "0"
-                learning_context["teaching_lesson_plan"] = json.dumps(
-                    [step.to_dict() for step in teaching_engine.generate_lesson_plan(matched_topic)]
-                )
-            
-            # Lưu lại tiến độ vào database lập tức
-            if device_id:
-                try:
-                    from app.database.lesson_progress import save_lesson_progress
-                    save_lesson_progress(device_id, learning_context)
-                except Exception as db_err:
-                    logger.warning(f"Failed to save onboarding progress: {db_err}")
-            
-            reply_text = f"Rất vui được thám hiểm cùng {player_name}! Chúng ta cùng bắt đầu bài học đầu tiên về các lời chào nhé!"
-            
-            await self._speak_teaching_text(
-                reply_text,
-                on_tts_sentence=on_tts_sentence,
-                on_tts_audio=on_tts_audio,
-                is_aborted=is_aborted,
-                default_language="vi",
-            )
+        if not llm_response:
+            reply_text = "Xin lỗi, robot đang gặp chút vấn đề. Chúng ta thử lại nhé!"
+            await self._speak_text(reply_text, on_tts_sentence=on_tts_sentence, on_tts_audio=on_tts_audio, is_aborted=is_aborted, language_hint="vi")
             return reply_text
 
-        # 1. Check if we have an active topic
-        current_topic_id = learning_context.get("teaching_topic_id")
-        
-        if not current_topic_id:
-            # No active topic - try to infer from user text or start with default
-            # Check for topic requests like "học màu sắc", "dạy con vật"
-            user_lower = user_text.lower()
-            
-            # Try to match topic by keywords
-            all_topics = content_service.get_all_topics()
-            matched_topic = None
-            
-            for topic in all_topics:
-                title_lower = topic.get("title", "").lower()
-                topic_id_lower = topic.get("topic_id", "").lower()
-                
-                if title_lower in user_lower or topic_id_lower in user_lower:
-                    matched_topic = topic
-                    break
-                
-                # Check vocabulary words for matching
-                for vocab in topic.get("vocabulary", []):
-                    if vocab.get("word", "").lower() in user_lower:
-                        matched_topic = topic
-                        break
-                if matched_topic:
-                    break
-            
-            # If still no match, default to colors_basic
-            if not matched_topic:
-                matched_topic = content_service.get_topic("colors_basic")
-            
-            if not matched_topic:
-                reply_text = "Xin lỗi, chưa có nội dung giảng dạy nào được tải. Vui lòng kiểm tra lại."
-                await self._speak_text(
-                    reply_text,
-                    on_tts_sentence=on_tts_sentence,
-                    on_tts_audio=on_tts_audio,
-                    is_aborted=is_aborted,
-                    language_hint="vi",
-                )
-                return reply_text
-            
-            # Initialize new lesson
-            learning_context["teaching_topic_id"] = matched_topic["topic_id"]
-            learning_context["teaching_step_index"] = "0"
-            learning_context["teaching_lesson_plan"] = json.dumps(
-                [step.to_dict() for step in teaching_engine.generate_lesson_plan(matched_topic)]
-            )
-            logger.info(f"Starting new teaching topic: {matched_topic['topic_id']}")
-        
-        # 2. Load current topic and lesson plan
-        topic_id_str = str(learning_context.get("teaching_topic_id") or "")
-        topic = content_service.get_topic(topic_id_str) if topic_id_str else None
-        if not topic:
-            reply_text = "Lỗi: Không tìm thấy nội dung bài học."
-            self._clear_learning_context(learning_context)
-            await self._speak_text(
-                reply_text,
-                on_tts_sentence=on_tts_sentence,
-                on_tts_audio=on_tts_audio,
-                is_aborted=is_aborted,
-                language_hint="vi",
-            )
-            return reply_text
-        
-        # Parse lesson plan
-        try:
-            lesson_plan_json = str(learning_context.get("teaching_lesson_plan") or "[]")
-            lesson_plan_dicts = json.loads(lesson_plan_json)
-            lesson_plan = [
-                TeachingStep(step["step_type"], step["data"]) 
-                for step in lesson_plan_dicts
-            ]
-        except Exception as e:
-            logger.error(f"Error parsing lesson plan: {e}")
-            lesson_plan = teaching_engine.generate_lesson_plan(topic)
-            learning_context["teaching_lesson_plan"] = json.dumps(
-                [step.to_dict() for step in lesson_plan]
-            )
-        
-        # Get current step
-        try:
-            step_index_str = str(learning_context.get("teaching_step_index") or "0")
-            current_step_index = int(step_index_str)
-        except (ValueError, TypeError):
-            current_step_index = 0
-        
-        # 3. Check if lesson is complete
-        if teaching_engine.is_lesson_complete(current_step_index, len(lesson_plan)):
-            reply_text = "Giỏi lắm! Bài học hôm nay xong rồi. Hẹn gặp bạn lần sau nhé!"
-            self._clear_learning_context(learning_context)
-            await self._speak_teaching_text(
-                reply_text,
-                on_tts_sentence=on_tts_sentence,
-                on_tts_audio=on_tts_audio,
-                is_aborted=is_aborted,
-                default_language="vi",
-            )
-            return reply_text
-        
-        # 4. Get current step and generate prompt
-        current_step = lesson_plan[current_step_index]
-        response_language = "vi"  # default
-        
-        try:
-            teaching_prompt = await teaching_engine.generate_teaching_prompt(
-                step=current_step,
-                topic=topic,
-                student_response=user_text,
-                student_history=None
-            )
-            
-            # 5. Call LLM with teaching prompt + story context
-            llm_response = await self._llm.chat_json(
-                user_text=teaching_prompt + story_context,
-                system_prompt=TEACHING_SYSTEM_PROMPT,
-            )
-            
-            if not llm_response:
-                raise RuntimeError("LLM returned empty response")
-            
-            # Parse language and emotion from LLM JSON response
-            response_language, response_emotion, parsed_text = self._parse_llm_tts_payload(llm_response)
-            reply_text = parsed_text if parsed_text else (
-                str(llm_response.get("text", "")).strip() if isinstance(llm_response, dict) else str(llm_response).strip()
-            )
-            
-            # Send emotion to ESP32 if available
-            if response_emotion and on_emotion and not is_aborted():
-                await on_emotion(response_emotion)
-            
-            # 6. Evaluate student response for ASK_REPEAT steps
-            if current_step.step_type == TeachingStep.ASK_REPEAT:
-                expected_word = current_step.data.get("word", "")
-                
-                # Read current attempt count
-                try:
-                    attempt_count = int(learning_context.get("teaching_attempt_count") or "0")
-                except (ValueError, TypeError):
-                    attempt_count = 0
-                
-                # Auto-advance after 2 failed attempts to prevent infinite loop
-                if attempt_count >= 2:
-                    logger.info(f"ASK_REPEAT: auto-advancing after {attempt_count} failed attempts (word='{expected_word}')")
-                    learning_context["teaching_step_index"] = str(current_step_index + 1)
-                    learning_context["teaching_attempt_count"] = "0"
-                else:
-                    evaluation = await teaching_engine.evaluate_student_response(
-                        student_text=user_text,
-                        expected_answer=expected_word,
-                        step_type=current_step.step_type
-                    )
-                    logger.info(f"Student evaluation (attempt {attempt_count+1}): {evaluation}")
-                    
-                    if evaluation.get("is_correct"):
-                        # Correct — advance and reset counter
-                        learning_context["teaching_step_index"] = str(current_step_index + 1)
-                        learning_context["teaching_attempt_count"] = "0"
-                    else:
-                        # Wrong — increment attempt count, stay on same step
-                        learning_context["teaching_attempt_count"] = str(attempt_count + 1)
-            else:
-                # For all other step types (INTRO, PRESENT_WORD, ASSESS, SUMMARY), always advance
-                learning_context["teaching_step_index"] = str(current_step_index + 1)
-                learning_context["teaching_attempt_count"] = "0"
-            
-        except Exception as e:
-            logger.error(f"Error in teaching mode: {e}", exc_info=True)
-            reply_text = "Xin lỗi, robot đang gặp chút vấn đề. Chúng ta thử lại nhé!"
+        # ── Parse LLM response ──
+        if isinstance(llm_response, dict):
+            reply_text = str(llm_response.get("text", "")).strip()
+            response_emotion = str(llm_response.get("emotion", "neutral")).strip().lower()
+            llm_advance = bool(llm_response.get("advance", False))
+            wait_for_student = bool(llm_response.get("wait_for_student", True))
+            response_language = str(llm_response.get("language", "vi")).strip().lower()
+            if response_language not in ("vi", "en"):
+                response_language = "vi"
+        else:
+            reply_text = str(llm_response).strip()
+            response_emotion = "neutral"
             response_language = "vi"
-        
-        # 7. Speak the response — use per-sentence language detection
+            llm_advance = False
+            wait_for_student = True
+
+        if not reply_text:
+            reply_text = "Con thử nói lại xem nhé!"
+            wait_for_student = True
+
+        # Emotion to ESP32
+        if response_emotion in ("neutral", "happy", "encouraging", "praising", "confused", "excited") and on_emotion and not is_aborted():
+            await on_emotion(response_emotion)
+
+        # ── Scoring backstop ──
+        current_word_text = str(current_vocab.get("word", ""))
+        should_advance = llm_advance
+        if valid_input and current_word_text and not is_continuation:
+            backstop = teaching_engine.evaluate_with_backstop(
+                student_text=user_text,
+                expected_answer=current_word_text,
+                llm_advance=llm_advance,
+            )
+            should_advance = backstop["advance"]
+            if backstop["method"] not in ("llm_only", "llm_decided"):
+                logger.info("Backstop %s: word=%s input=%s conf=%.3f",
+                           backstop["method"], current_word_text, user_text, backstop["confidence"])
+
+            # Nếu backstop override LLM → gọi lại LLM với context đúng
+            if should_advance != llm_advance:
+                if should_advance:
+                    note = "[Note: The student said the word correctly. Advance to next word and introduce it.]"
+                else:
+                    note = "[Note: The student did NOT say it correctly. Stay on current word, re-explain, ask again.]"
+                llm_response = await self._llm.chat_json(
+                    user_text=prompt + story_note + "\n" + note,
+                    system_prompt=TEACHING_SYSTEM_PROMPT,
+                )
+                if isinstance(llm_response, dict):
+                    reply_text = str(llm_response.get("text", "")).strip()
+                    response_emotion = str(llm_response.get("emotion", "neutral")).strip().lower()
+                    wait_for_student = bool(llm_response.get("wait_for_student", True))
+                    response_language = str(llm_response.get("language", "vi")).strip().lower()
+                    if response_language not in ("vi", "en"):
+                        response_language = "vi"
+                if not reply_text:
+                    reply_text = "Giỏi lắm! Từ tiếp theo nhé!" if should_advance else "Thử lại nha!"
+                    wait_for_student = True
+
+        # ── Game profile update (XP, streak) ──
+        if game_profile and valid_input and not is_continuation:
+            try:
+                is_first_try = word_index == self._ctx_word_index(learning_context)
+                if should_advance:
+                    game_profile.add_correct_answer(is_first_try=is_first_try)
+                else:
+                    game_profile.add_wrong_answer()
+            except Exception as e:
+                logger.warning("Game profile update error: %s", e)
+
+        # ── Auto-skip after 3 fails ──
+        if not should_advance and fail_count >= 3:
+            should_advance = True
+            reply_text = f"Không sao! Mình chuyển sang từ khác nha, lát quay lại từ {current_word_text} sau!"
+            wait_for_student = True
+            logger.info("Auto-skip word '%s' after %d failed attempts", current_word_text, fail_count)
+
+        # ── Advance logic ──
+        if should_advance:
+            word_index += 1
+            learning_context["word_index"] = str(word_index)
+            learning_context["_fail_count"] = "0"  # reset on new word
+            if word_index < total_words:
+                wait_for_student = True
+        else:
+            learning_context["_fail_count"] = str(fail_count)
+            wait_for_student = True
+
+        # ── Save conversation history ──
+        if valid_input and not is_continuation:
+            conv_history.append({"role": "user", "content": user_text})
+        conv_history.append({"role": "assistant", "content": reply_text})
+        if len(conv_history) > 20:
+            conv_history[:] = conv_history[-20:]
+
+        # ── Enforce: no consecutive teacher turns ──
+        last_wait = learning_context.get("_last_wait", "true")
+        if not wait_for_student and last_wait == "false":
+            wait_for_student = True
+        learning_context["_last_wait"] = "true" if wait_for_student else "false"
+
+        # ── Speak ──
         await self._speak_teaching_text(
             reply_text,
             on_tts_sentence=on_tts_sentence,
             on_tts_audio=on_tts_audio,
             is_aborted=is_aborted,
-            default_language=response_language or "vi",
+            default_language=response_language,
         )
-        
+
+        # ── Handle continuation or lesson advance ──
+        if word_index >= total_words:
+            await self._advance_to_next_lesson(
+                learning_context, topic_id, device_id, content_service,
+                on_tts_sentence, on_tts_audio, is_aborted,
+            )
+        elif not wait_for_student and not is_aborted():
+            logger.info("Teacher continuation: auto-triggering next teaching turn")
+            await self._handle_teaching_mode(
+                "__CONTINUATION__",
+                learning_context=learning_context,
+                on_tts_sentence=on_tts_sentence,
+                on_tts_audio=on_tts_audio,
+                on_emotion=on_emotion,
+                is_aborted=is_aborted,
+                game_profile=game_profile,
+                device_id=device_id,
+            )
+
         return reply_text
+
+    async def _handle_onboarding(
+        self,
+        user_text: str,
+        content_service,
+        learning_context: dict[str, str | None],
+        device_id: str | None,
+        on_tts_sentence: Callable[[str], Awaitable[None]],
+        on_tts_audio: Callable[[bytes], Awaitable[None]],
+        is_aborted: Callable[[], bool],
+    ) -> str:
+        """Extract name, set up first lesson."""
+        name_clean = user_text.strip()
+        prefixes = [
+            "tên con là", "tên tớ là", "tên mình là", "tên em là", "con tên là",
+            "tớ tên là", "mình tên là", "em tên là", "mình là", "tớ là", "con là",
+            "em là", "tên là", "là"
+        ]
+        for p in prefixes:
+            if name_clean.lower().startswith(p):
+                name_clean = name_clean[len(p):].strip()
+                break
+        name_clean = name_clean.rstrip(".?!,")
+        words = name_clean.split()
+        if len(words) > 3:
+            try:
+                xp = f"Trích xuất tên của học sinh từ câu nói sau. Chỉ trả về duy nhất tên, không thêm gì. Câu: \"{user_text}\""
+                extracted = await self._llm.chat_json(xp, system_prompt="Bạn là trợ lý trích xuất tên riêng.")
+                if isinstance(extracted, dict) and extracted.get("name"):
+                    name_clean = str(extracted["name"])
+                elif isinstance(extracted, str) and extracted:
+                    name_clean = extracted
+            except Exception:
+                name_clean = words[-1]
+        player_name = name_clean.title() if name_clean else "Nhà thám hiểm"
+        learning_context["player_name"] = player_name
+        learning_context["onboarding_state"] = ""
+
+        matched_topic = content_service.get_topic("greetings_basic") or content_service.get_topic("colors_basic")
+        if matched_topic:
+            learning_context["teaching_topic_id"] = matched_topic["topic_id"]
+            learning_context["word_index"] = "0"
+
+        if device_id:
+            try:
+                save_lesson_progress(device_id, learning_context)
+            except Exception as e:
+                logger.warning("Failed to save onboarding: %s", e)
+
+        reply = f"Rất vui được thám hiểm cùng {player_name}! Chúng ta cùng bắt đầu bài học đầu tiên nhé!"
+        await self._speak_teaching_text(reply, on_tts_sentence=on_tts_sentence, on_tts_audio=on_tts_audio, is_aborted=is_aborted, default_language="vi")
+        return reply
+
+    async def _init_lesson(
+        self,
+        learning_context: dict[str, str | None],
+        user_text: str,
+        content_service,
+        device_id: str | None,
+    ) -> None:
+        """Initialize or resume lesson from roadmap."""
+        from app.services.learning_content import get_next_lesson_from_roadmap
+        current_lesson_id = self._context_current_lesson_id(learning_context)
+        roadmap_lesson = get_next_lesson_from_roadmap(current_lesson_id)
+        matched_topic = None
+        if roadmap_lesson:
+            default_topic_id = str(roadmap_lesson.get("topic_id") or "")
+            if default_topic_id:
+                matched_topic = content_service.get_topic(default_topic_id)
+        if not matched_topic and user_text.strip():
+            user_lower = user_text.lower()
+            for t in content_service.get_all_topics():
+                if t.get("title", "").lower() in user_lower or t.get("topic_id", "").lower() in user_lower:
+                    matched_topic = t
+                    break
+        if not matched_topic:
+            matched_topic = content_service.get_topic("colors_basic")
+        if matched_topic:
+            learning_context["teaching_topic_id"] = matched_topic["topic_id"]
+            learning_context["word_index"] = "0"
+            logger.info("Initialized lesson: %s", matched_topic["topic_id"])
+
+    async def _advance_to_next_lesson(
+        self,
+        learning_context: dict[str, str | None],
+        topic_id: str,
+        device_id: str | None,
+        content_service,
+        on_tts_sentence: Callable[[str], Awaitable[None]],
+        on_tts_audio: Callable[[bytes], Awaitable[None]],
+        is_aborted: Callable[[], bool],
+    ) -> None:
+        """Mark current lesson complete and advance."""
+        from app.services.learning_content import get_a1_learning_roadmap, get_next_lesson_from_roadmap
+        from app.services.story_engine import get_land_by_module_index, STORY_OUTRO
+        current_flat_id = self._context_current_lesson_id(learning_context)
+        next_lesson = get_next_lesson_from_roadmap(current_flat_id + 1)
+        if device_id:
+            try:
+                mark_lesson_completed(device_id, topic_id)
+            except Exception as e:
+                logger.warning("Failed to mark lesson completed: %s", e)
+        if next_lesson:
+            roadmap = get_a1_learning_roadmap()
+            modules = roadmap.get("modules") or roadmap.get("units") or []
+            flat_idx = -1
+            next_module_idx = 0
+            for mi, mod in enumerate(modules):
+                for li in range(len(mod.get("lessons", []))):
+                    flat_idx += 1
+                    if flat_idx == current_flat_id + 1:
+                        next_module_idx = mi
+                        break
+                if flat_idx == current_flat_id + 1:
+                    break
+            next_topic_id = str(next_lesson.get("topic_id") or "")
+            next_topic = content_service.get_topic(next_topic_id) if next_topic_id else None
+            if next_topic:
+                learning_context["current_lesson_id"] = str(current_flat_id + 1)
+                learning_context["teaching_topic_id"] = next_topic_id
+                learning_context["word_index"] = "0"
+                land = get_land_by_module_index(next_module_idx)
+                land_name = land["name"] if land else ""
+                reply = f"Giỏi quá! Chuyển sang bài mới ở {land_name}. Học từ đầu tiên nhé!"
+            else:
+                learning_context["current_lesson_id"] = str(current_flat_id + 1)
+                learning_context["teaching_topic_id"] = None
+                reply = "Bài tiếp theo chưa sẵn sàng. Nói 'tiếp theo' khi muốn học nhé!"
+        else:
+            learning_context["teaching_topic_id"] = None
+            reply = STORY_OUTRO
+        await self._speak_teaching_text(reply, on_tts_sentence=on_tts_sentence, on_tts_audio=on_tts_audio, is_aborted=is_aborted, default_language="vi")
+
+    @staticmethod
+    def _ctx_word_index(learning_context: dict[str, str | None]) -> int:
+        raw = str(learning_context.get("word_index") or "0").strip()
+        try:
+            return max(0, int(raw))
+        except (ValueError, TypeError):
+            return 0
 
     @staticmethod
     def _context_attempt_count(learning_context: dict[str, str | None]) -> int:
@@ -1298,26 +1423,21 @@ class ConversationPipeline:
         default_language: str = "vi",
     ) -> None:
         """
-        Speak teaching text with per-sentence language detection.
-        Splits on sentence boundaries (.!?) then routes each sentence to vi or en TTS.
-        This ensures English words are spoken with English TTS even if the overall
-        response language is Vietnamese.
+        Speak teaching text entirely in `default_language` (Vietnamese).
+        No per-sentence language detection — the TTS SSML layer handles
+        English word pronunciation internally via <voice> tags, avoiding
+        the choppiness that comes from splitting into vi/en chunks.
         """
-        # Split into sentences at . ! ? boundaries (keep delimiter)
-        parts = re.split(r"(?<=[.!?])\s+", text.strip())
-        for part in parts:
-            part = part.strip()
-            if not part or is_aborted():
-                break
-            lang = self._detect_sentence_language(part, default=default_language)
-            logger.debug(f"[TTS] lang={lang} for: {part[:50]}")
-            await self._speak_text(
-                part,
-                on_tts_sentence=on_tts_sentence,
-                on_tts_audio=on_tts_audio,
-                is_aborted=is_aborted,
-                language_hint=lang,
-            )
+        text = text.strip()
+        if not text or is_aborted():
+            return
+        await self._speak_text(
+            text,
+            on_tts_sentence=on_tts_sentence,
+            on_tts_audio=on_tts_audio,
+            is_aborted=is_aborted,
+            language_hint=default_language,
+        )
 
     @staticmethod
     def _context_seen_words(learning_context: dict[str, str | None]) -> list[str]:

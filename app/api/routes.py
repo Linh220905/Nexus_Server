@@ -1,3 +1,4 @@
+import json
 from app.server_logging import get_logger
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
@@ -139,6 +140,59 @@ async def learning_roadmap(session: dict = Depends(require_viewer)):
     """Returns the A1 English learning roadmap."""
     _ = session
     return get_a1_learning_roadmap()
+
+
+@router.get("/learning/progress/{robot_mac}")
+async def learning_progress(robot_mac: str, session: dict = Depends(require_viewer)):
+    """Returns lesson progress & unlocked lessons for a robot.
+
+    Web dùng API này để biết robot đã học tới đâu, mở khóa tương ứng.
+    """
+    from app.database.lesson_progress import load_lesson_progress
+    from app.services.learning_content import get_a1_learning_roadmap
+
+    progress = load_lesson_progress(robot_mac)
+    roadmap = get_a1_learning_roadmap()
+    if not roadmap:
+        return {"ok": False, "error": "No roadmap found"}
+
+    modules = roadmap.get("modules") or roadmap.get("units") or []
+
+    current_lesson_id = 0
+    completed_lessons = []
+    if progress:
+        current_lesson_id = int(progress.get("current_lesson_id", 0))
+        try:
+            completed_lessons = json.loads(progress.get("completed_lessons", "[]"))
+        except (json.JSONDecodeError, TypeError):
+            completed_lessons = []
+
+    flat_idx = -1
+    result_modules = []
+    for mod in modules:
+        mod_lessons = []
+        for les in mod.get("lessons", []):
+            flat_idx += 1
+            mod_lessons.append({
+                "id": les.get("teaching_content_id"),
+                "title": les.get("title"),
+                "description": les.get("description"),
+                "unlocked": flat_idx <= current_lesson_id,
+                "completed": les.get("teaching_content_id") in completed_lessons,
+                "current": flat_idx == current_lesson_id,
+            })
+        result_modules.append({
+            "title": mod["title"],
+            "story_land": mod.get("story_land"),
+            "lessons": mod_lessons,
+        })
+
+    return {
+        "ok": True,
+        "current_lesson_id": current_lesson_id,
+        "completed_lessons": completed_lessons,
+        "modules": result_modules,
+    }
 
 
 @router.get("/assignments")

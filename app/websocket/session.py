@@ -87,11 +87,14 @@ class Session:
         self._silent_frames = 0  # Số frames im lặng liên tiếp
         self._has_speech = False  # Đã xác nhận giọng nói chưa
         self._speech_frames = 0  # Số frames có năng lượng cao (đếm để xác nhận)
-        self._noise_floor_rms = 0.0  # Nền nhiễu RMS ước lượng (adaptive)
+        self._noise_floor_rms = 30.0  # Nền nhiễu RMS ước lượng (adaptive), khởi tạo mức yên tĩnh
         self._last_speech_threshold = 0.0
         self._last_silence_threshold = 0.0
         self._last_rms_delta = 0.0
-        self._rms_history = []  # Lịch sử RMS để bám nhiễu động dạng sliding window
+        self._rms_history = [30.0] * 50  # Lịch sử RMS để bám nhiễu — pre-fill để percentile hoạt động từ frame 1
+        # Adaptive silence: track utterance duration để quyết định silence timeout
+        self._total_speech_frames = 0  # Tổng speech frames trong utterance hiện tại
+        self._peak_rms = 0.0  # RMS cao nhất trong utterance hiện tại
 
     @property
     def buffer_size(self) -> int:
@@ -112,6 +115,8 @@ class Session:
         self._last_speech_threshold = 0.0
         self._last_silence_threshold = 0.0
         self._last_rms_delta = 0.0
+        self._total_speech_frames = 0  # Reset cho utterance mới
+        self._peak_rms = 0.0
         self.aborted = False
 
     def append_audio(self, opus_data: bytes) -> bytes | None:
@@ -131,18 +136,23 @@ class Session:
         pcm: bytes,
         speech_threshold: int = 280,
         silence_threshold: int = 180,
-        speech_frames_needed: int = 3,
-        silence_frames_needed: int = 12,
+        speech_frames_needed: int = 2,
+        silence_frames_needed: int = 8,
     ) -> str:
         """
         Phân tích năng lượng âm thanh, trả về trạng thái.
 
         Yêu cầu ít nhất `speech_frames_needed` frames có RMS > speech_threshold
         để xác nhận có người nói thật. Sau đó, nếu RMS < silence_threshold
-        trong `silence_frames_needed` frames liên tiếp → trigger STT.
+        trong đủ frames liên tiếp (thích ứng theo độ dài câu nói) → trigger STT.
 
-        Sử dụng bộ lọc min-filter (sliding window) kết hợp chống nhiễu 
+        Sử dụng bộ lọc min-filter (sliding window) kết hợp chống nhiễu
         để tự thích ứng cực nhanh với tạp âm môi trường mà không bị kẹt.
+
+        Silence timeout thích ứng:
+          - Utterance ≤ 5 frames speech  → 4 frames silence (câu rất ngắn: "dạ", "có")
+          - Utterance ≤ 10 frames speech → 6 frames silence (câu ngắn: "tên gì")
+          - Utterance > 10 frames speech → 8 frames silence (câu dài bình thường)
 
         Returns:
             'speech': Đang nói
@@ -158,38 +168,64 @@ class Session:
 
         # Lấy giá trị nhỏ thứ 3 để triệt tiêu các mẫu dropout / frame lỗi đơn lẻ (RMS = 0)
         sorted_history = sorted(self._rms_history)
-        self._noise_floor_rms = sorted_history[min(2, len(sorted_history) - 1)]
+        self._noise_floor_rms = max(
+            sorted_history[min(2, len(sorted_history) - 1)],
+            30.0,  # Không xuống dưới 30 — tránh threshold quá thấp
+        )
 
         # 2. Tính toán ngưỡng speech và silence động thích ứng theo noise floor thực tế
+        #    Dùng tỷ lệ SNR (Signal-to-Noise Ratio) thay vì absolute delta
         dynamic_speech_threshold = max(float(speech_threshold), self._noise_floor_rms * 1.35 + 80.0)
         dynamic_silence_threshold = max(float(silence_threshold), self._noise_floor_rms * 1.12 + 30.0)
-        
+
         rms_delta = rms - self._noise_floor_rms
         self._last_speech_threshold = dynamic_speech_threshold
         self._last_silence_threshold = dynamic_silence_threshold
         self._last_rms_delta = rms_delta
 
         # 3. State machine cho VAD
-        # Chỉ nhận diện khi mức tăng RMS vượt hẳn 80 đơn vị so với noise floor
-        if rms > dynamic_speech_threshold and rms_delta > 80:
+        #    Dùng SNR ratio: speech khi RMS > threshold VÀ tỷ lệ tín hiệu/nhiễu >= 40%
+        #    (linh hoạt hơn so với delta > 80 cố định)
+        snr_ratio = rms / max(self._noise_floor_rms, 1.0)
+        if rms > dynamic_speech_threshold and snr_ratio > 1.4:
             self._silent_frames = 0
             self._speech_frames += 1
+            self._total_speech_frames += 1
+            if rms > self._peak_rms:
+                self._peak_rms = rms
             if self._speech_frames >= speech_frames_needed:
                 self._has_speech = True
             return 'speech'
         elif rms > dynamic_silence_threshold:
             self._silent_frames = 0
             # Nếu chưa chắc chắn là nói thật, giảm đếm để tránh nhiễu lắt nhắt cộng dồn
-            if not self._has_speech and self._speech_frames > 0:
+            if not self._has_speech and self._speech_frames >= 3:
                 self._speech_frames -= 1
             return 'speech' if self._has_speech else 'silence'
         else:
             self._silent_frames += 1
             if not self._has_speech:
                 self._speech_frames = 0
-            if self._has_speech and self._silent_frames >= silence_frames_needed:
-                return 'silence_after_speech'
+            if self._has_speech:
+                # Silence timeout thích ứng theo độ dài câu nói
+                needed = self._adaptive_silence_needed()
+                if self._silent_frames >= needed:
+                    return 'silence_after_speech'
             return 'silence'
+
+    def _adaptive_silence_needed(self) -> int:
+        """
+        Tính số frames silence cần để trigger, dựa trên độ dài câu nói.
+
+        - Utterance ≤ 3 frames speech  → 5 frames (từ rất ngắn: "dạ", "vâng")
+        - Utterance ≤ 10 frames speech → 6 frames (câu ngắn: "tên gì", "ở đâu")
+        - Utterance > 10 frames speech → 8 frames (câu dài bình thường)
+        """
+        if self._total_speech_frames <= 3:
+            return 5
+        elif self._total_speech_frames <= 10:
+            return 6
+        return 8
 
     @property
     def has_speech(self) -> bool:
